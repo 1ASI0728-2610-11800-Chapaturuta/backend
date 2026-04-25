@@ -1,0 +1,36 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: frock-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: frockdb
+    ports:
+      - "3307:3306"
+    volumes:
+      - frock_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: frock-backend
+    ports:
+      - "5027:8080"
+    restart: on-failure
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "server=mysql;user=root;password=root;database=frockdb"
+      GeoApi__BaseUrl: "https://django-production-0960.up.railway.app/api/districts/"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  frock_mysql_data:

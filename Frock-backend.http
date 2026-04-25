@@ -1,0 +1,6 @@
+@Frock_backend_HostAddress = http://localhost:5027
+
+GET {{Frock_backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
