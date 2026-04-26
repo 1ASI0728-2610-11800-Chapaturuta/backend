@@ -3,12 +3,14 @@ using Frock_backend.Collections.Domain.Model.Queries;
 using Frock_backend.Collections.Domain.Services;
 using Frock_backend.Collections.Interfaces.REST.Resources;
 using Frock_backend.Collections.Interfaces.REST.Transform;
+using Frock_backend.IAM.Infrastructure.Pipeline.Middleware.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net.Mime;
 
 namespace Frock_backend.Collections.Interfaces.REST;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 [Produces(MediaTypeNames.Application.Json)]

@@ -121,6 +121,9 @@ namespace Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration
                 b.Property(r => r.Frequency).IsRequired();
                 b.Property(r => r.IsActive).HasDefaultValue(true);
                 b.Property(r => r.Status).HasDefaultValue("Active").HasMaxLength(20);
+                b.Property(r => r.DistanceMeters).HasColumnType("decimal(12,2)");
+                b.Property(r => r.DurationSeconds);
+                b.Property(r => r.Geometry).HasColumnType("TEXT");
                 b.HasMany(r => r.Schedules)
                  .WithOne()
                  .HasForeignKey(s => s.RouteId)

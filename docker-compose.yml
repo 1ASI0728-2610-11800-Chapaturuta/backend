@@ -16,6 +16,63 @@ services:
       retries: 20
       start_period: 30s
 
+  # Run once to preprocess the PBF: docker compose --profile setup run --rm osrm-preprocess
+  osrm-preprocess:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    profiles:
+      - setup
+    volumes:
+      - ./osm-data:/osm-data
+      - ./osrm-data:/osrm-data
+    command: >
+      sh -c "
+        osrm-extract -p /opt/car.lua /osm-data/peru-260425.osm.pbf -o /osrm-data/peru-260425.osrm &&
+        osrm-partition /osrm-data/peru-260425.osrm &&
+        osrm-customize /osrm-data/peru-260425.osrm
+      "
+
+  osrm-backend:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    container_name: frock-osrm
+    volumes:
+      - ./osrm-data:/data:ro
+    command: osrm-routed --algorithm mld /data/peru-260425.osrm
+    ports:
+      - "5001:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- 'http://127.0.0.1:5000/route/v1/driving/-77.0428,-12.0464;-77.0500,-12.0500' > /dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # Run once to import PBF into PostgreSQL: docker compose --profile tiles-setup run --rm osm-import
+  osm-import:
+    image: overv/openstreetmap-tile-server:latest
+    profiles:
+      - tiles-setup
+    volumes:
+      - ./osm-data/peru-260425.osm.pbf:/data/region.osm.pbf
+      - osm_pg_data:/var/lib/postgresql/15/main
+      - tile_data:/data/tiles
+    environment:
+      THREADS: "4"
+    command: import
+
+  osm-tile-server:
+    image: overv/openstreetmap-tile-server:latest
+    container_name: frock-tiles
+    volumes:
+      - osm_pg_data:/var/lib/postgresql/15/main
+      - tile_data:/data/tiles
+    environment:
+      ALLOW_CORS: "enabled"
+    ports:
+      - "8088:80"
+    command: run
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -28,9 +85,34 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "server=mysql;user=root;password=root;database=frockdb"
       GeoApi__BaseUrl: "https://django-production-0960.up.railway.app/api/districts/"
+      Osrm__BaseUrl: "http://osrm-backend:5000"
+      Osrm__TimeoutSeconds: "10"
+      Osrm__Profile: "driving"
+      OsmTiles__PublicUrl: "http://localhost:8088/tile/{z}/{x}/{y}.png"
     depends_on:
       mysql:
         condition: service_healthy
+      osrm-backend:
+        condition: service_healthy
+
+  # ── FASE 2 (comentado — descomentar para activar Overpass) ──────────────────
+  # overpass-api:
+  #   image: wiktorn/overpass-api:latest
+  #   container_name: frock-overpass
+  #   volumes:
+  #     - ./osm-data/peru-260425.osm.pbf:/osm-data/peru-260425.osm.pbf:ro
+  #     - overpass_data:/db
+  #   environment:
+  #     OVERPASS_MODE: init
+  #     OVERPASS_PLANET_URL: /osm-data/peru-260425.osm.pbf
+  #     OVERPASS_DIFF_URL: ""
+  #     OVERPASS_RULES_LOAD: "10"
+  #   ports:
+  #     - "8089:80"
+  #   restart: unless-stopped
 
 volumes:
   frock_mysql_data:
+  osm_pg_data:
+  tile_data:
+  # overpass_data:

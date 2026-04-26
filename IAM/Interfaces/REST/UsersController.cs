@@ -3,6 +3,7 @@ using Frock_backend.IAM.Domain.Model.Commands;
 using Frock_backend.IAM.Domain.Model.Queries;
 using Frock_backend.IAM.Domain.Services;
 using Frock_backend.IAM.Infrastructure.Pipeline.Middleware.Attributes;
+using Frock_backend.IAM.Domain.Model.ValueObjects;
 using Frock_backend.IAM.Interfaces.REST.Resources;
 using Frock_backend.IAM.Interfaces.REST.Transform;
 using Microsoft.AspNetCore.Mvc;
@@ -30,8 +31,11 @@ public class UsersController(IUserQueryService userQueryService, IUserCommandSer
     }
 
     [HttpGet]
+    [Authorize(Role.Admin)]
     [SwaggerOperation(Summary = "Get all users", OperationId = "GetAllUsers")]
     [SwaggerResponse(StatusCodes.Status200OK, "The users were found", typeof(IEnumerable<UserResource>))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Forbidden - insufficient role")]
     public async Task<IActionResult> GetAllUsers()
     {
         var getAllUsersQuery = new GetAllUsersQuery();
@@ -66,8 +70,11 @@ public class UsersController(IUserQueryService userQueryService, IUserCommandSer
     }
 
     [HttpPut("{id}/role")]
+    [Authorize(Role.Admin)]
     [SwaggerOperation(Summary = "Update user role (admin only)", OperationId = "UpdateUserRole")]
     [SwaggerResponse(StatusCodes.Status200OK, "The role was updated", typeof(UserResource))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Forbidden - insufficient role")]
     [SwaggerResponse(StatusCodes.Status404NotFound, "User not found")]
     public async Task<IActionResult> UpdateUserRole(int id, [FromBody] UpdateUserRoleResource resource)
     {

@@ -1,34 +1,37 @@
-using Frock_backend.IAM.Application.Internal.QueryServices;
 using Frock_backend.IAM.Domain.Model.Aggregates;
+using Frock_backend.IAM.Domain.Model.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Frock_backend.IAM.Infrastructure.Pipeline.Middleware.Attributes;
+
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-public class AuthorizeAttribute : Attribute, IAuthorizationFilter
+public class AuthorizeAttribute(params Role[] roles) : Attribute, IAuthorizationFilter
 {
+    public AuthorizeAttribute() : this(Array.Empty<Role>()) { }
+
     /**
      * <summary>
      *     This method is called when authorization is required.
-     *     It checks if the user is logged in by checking if HttpContext.User is set.
+     *     It checks if the user is logged in by checking if HttpContext.Items["User"] is set.
      *     If a user is not signed in then it returns 401-status code.
+     *     If roles are specified and the user does not have the required role, returns 403.
      * </summary>
      * <param name="context">The authorization filter context</param>
      */
     public void OnAuthorization(AuthorizationFilterContext context)
     {
         var allowAnonymous = context.ActionDescriptor.EndpointMetadata.OfType<AllowAnonymousAttribute>().Any();
+        if (allowAnonymous) return;
 
-        if (allowAnonymous)
+        var user = context.HttpContext.Items["User"] as User;
+        if (user == null)
         {
-            Console.WriteLine(" Skipping authorization");
+            context.Result = new UnauthorizedResult();
             return;
         }
 
-        // verify if a user is signed in by checking if HttpContext.User is set
-        var user = (int)context.HttpContext.Items["User"];
-
-        // if a user is not signed in, then return 401-status code
-        if (user == null) context.Result = new UnauthorizedResult();
+        if (roles.Length > 0 && !roles.Contains(user.Role))
+            context.Result = new ObjectResult(new { message = "Forbidden: insufficient role" }) { StatusCode = 403 };
     }
 }

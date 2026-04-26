@@ -1,0 +1,20 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+
+## Logs
+logs/
+
+## Env
+.env
+appsettings.Production.json
+
+## OSM data (large files, not committed)
+osm-data/*.osm.pbf
+osm-data/*.osrm*
+osrm-data/
+tile-data/

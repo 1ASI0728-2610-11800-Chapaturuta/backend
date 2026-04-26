@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using Frock_backend.shared.Infrastructure.Swagger;
 
 // SHARED
 using Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration;
@@ -54,6 +55,7 @@ using Frock_backend.routes.Infrastructure.Repositories;
 using Frock_backend.routes.Domain.Service;
 using Frock_backend.routes.Application.Internal.CommandServices;
 using Frock_backend.routes.Application.Internal.QueryServices;
+using Frock_backend.routes.Infrastructure.ExternalServices;
 using Frock_backend.stops.Application.External;
 
 // RATINGS
@@ -119,6 +121,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddSwaggerGen(options =>
 {
     options.EnableAnnotations();
+    options.OperationFilter<SwaggerExamplesFilter>();
     options.SwaggerDoc("v1",
         new OpenApiInfo
         {
@@ -134,11 +137,9 @@ builder.Services.AddSwaggerGen(options =>
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
-        Description = "Please enter token",
+        Description = "Ingresa el token JWT con el prefijo Bearer. Ejemplo: Bearer eyJhbGciOi...",
         Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        BearerFormat = "JWT",
-        Scheme = "bearer"
+        Type = SecuritySchemeType.ApiKey
     });
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -271,6 +272,18 @@ builder.Services.AddScoped<INotificationQueryService, NotificationQueryService>(
 // Dependency Injection — Discovery
 // ============================================================
 builder.Services.AddScoped<IDiscoveryQueryService, DiscoveryQueryService>();
+
+// ============================================================
+// OSRM Routing Service
+// ============================================================
+builder.Services.AddHttpClient("osrm", client =>
+{
+    var baseUrl = builder.Configuration["Osrm:BaseUrl"] ?? "http://localhost:5001";
+    var timeout = int.TryParse(builder.Configuration["Osrm:TimeoutSeconds"], out var t) ? t : 10;
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(timeout);
+});
+builder.Services.AddScoped<IOsrmRoutingService, OsrmRoutingService>();
 
 // ============================================================
 // External Services

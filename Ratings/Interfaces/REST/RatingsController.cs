@@ -3,6 +3,8 @@ using Frock_backend.Ratings.Domain.Model.Queries;
 using Frock_backend.Ratings.Domain.Services;
 using Frock_backend.Ratings.Interfaces.REST.Resources;
 using Frock_backend.Ratings.Interfaces.REST.Transform;
+using Frock_backend.IAM.Infrastructure.Pipeline.Middleware.Attributes;
+using Frock_backend.IAM.Domain.Model.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net.Mime;
@@ -16,8 +18,11 @@ namespace Frock_backend.Ratings.Interfaces.REST;
 public class RatingsController(IRatingCommandService commandService, IRatingQueryService queryService) : ControllerBase
 {
     [HttpPost]
+    [Authorize(Role.Traveller, Role.Admin)]
     [SwaggerOperation(Summary = "Create a rating", OperationId = "CreateRating")]
     [SwaggerResponse(StatusCodes.Status201Created, "Rating created", typeof(RatingResource))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Forbidden - insufficient role")]
     public async Task<IActionResult> CreateRating([FromBody] CreateRatingResource resource)
     {
         try

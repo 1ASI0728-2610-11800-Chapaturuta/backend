@@ -1,7 +1,10 @@
 using Frock_backend.Discovery.Domain.Model.Queries;
+using Frock_backend.Discovery.Domain.Model.ValueObjects;
 using Frock_backend.Discovery.Domain.Services;
 using Frock_backend.routes.Domain.Model.Aggregates;
+using Frock_backend.routes.Domain.Model.ValueObjects;
 using Frock_backend.routes.Domain.Repository;
+using Frock_backend.routes.Domain.Service;
 using Frock_backend.stops.Domain.Model.Aggregates;
 using Frock_backend.stops.Domain.Repositories;
 using Frock_backend.Trips.Domain.Repositories;
@@ -11,9 +14,10 @@ namespace Frock_backend.Discovery.Application.Internal.QueryServices;
 public class DiscoveryQueryService(
     IRouteRepository routeRepository,
     IStopRepository stopRepository,
-    ITripRepository tripRepository) : IDiscoveryQueryService
+    ITripRepository tripRepository,
+    IOsrmRoutingService osrmRoutingService) : IDiscoveryQueryService
 {
-    public async Task<IEnumerable<RouteAggregate>> Handle(SearchRoutesQuery query)
+    public async Task<IEnumerable<SearchRouteResult>> Handle(SearchRoutesQuery query)
     {
         var allRoutes = await routeRepository.ListRoutes();
         var activeRoutes = allRoutes.Where(r => r.IsActive).ToList();
@@ -27,31 +31,87 @@ public class DiscoveryQueryService(
                 )).ToList();
         }
 
-        return activeRoutes;
+        var results = new List<SearchRouteResult>();
+        foreach (var route in activeRoutes)
+        {
+            double? distM = null;
+            double? durS = null;
+
+            if (!string.IsNullOrEmpty(query.Origin) && !string.IsNullOrEmpty(query.Destination))
+            {
+                var originStop = route.Stops.FirstOrDefault(s =>
+                    s.Stop.Name.Contains(query.Origin!, StringComparison.OrdinalIgnoreCase) ||
+                    s.Stop.Address.Contains(query.Origin!, StringComparison.OrdinalIgnoreCase));
+                var destStop = route.Stops.LastOrDefault(s =>
+                    s.Stop.Name.Contains(query.Destination!, StringComparison.OrdinalIgnoreCase) ||
+                    s.Stop.Address.Contains(query.Destination!, StringComparison.OrdinalIgnoreCase));
+
+                if (originStop?.Stop?.Latitude.HasValue == true && originStop.Stop.Longitude.HasValue &&
+                    destStop?.Stop?.Latitude.HasValue == true && destStop.Stop.Longitude.HasValue)
+                {
+                    try
+                    {
+                        var osrmResult = await osrmRoutingService.RouteAsync(new[]
+                        {
+                            new Coordinate(originStop.Stop.Latitude.Value, originStop.Stop.Longitude.Value),
+                            new Coordinate(destStop.Stop.Latitude.Value, destStop.Stop.Longitude.Value)
+                        });
+                        distM = osrmResult.DistanceMeters;
+                        durS = osrmResult.DurationSeconds;
+                    }
+                    catch { /* OSRM unavailable — return route without estimates */ }
+                }
+            }
+
+            results.Add(new SearchRouteResult(route, distM, durS));
+        }
+
+        return results;
     }
 
-    public async Task<IEnumerable<Stop>> Handle(GetNearbyStopsQuery query)
+    public async Task<IEnumerable<Stop>> Handle(GetNearbyStopsQuery query, bool useRoadDistance = false)
     {
         var allStops = await stopRepository.ListAsync();
-        return allStops.Where(s =>
+        var nearby = allStops.Where(s =>
             s.Latitude.HasValue && s.Longitude.HasValue &&
             CalculateDistanceKm(query.Latitude, query.Longitude, s.Latitude.Value, s.Longitude.Value) <= query.RadiusKm
-        ).OrderBy(s =>
-            CalculateDistanceKm(query.Latitude, query.Longitude, s.Latitude!.Value, s.Longitude!.Value)
-        );
+        ).ToList();
+
+        if (!useRoadDistance || nearby.Count == 0)
+        {
+            return nearby.OrderBy(s =>
+                CalculateDistanceKm(query.Latitude, query.Longitude, s.Latitude!.Value, s.Longitude!.Value));
+        }
+
+        var source = new Coordinate(query.Latitude, query.Longitude);
+        var destinations = nearby.Select(s => new Coordinate(s.Latitude!.Value, s.Longitude!.Value)).ToList();
+
+        try
+        {
+            var durations = (await osrmRoutingService.TableAsync(source, destinations)).ToList();
+            return nearby
+                .Select((s, i) => (Stop: s, RoadDuration: i < durations.Count ? durations[i] : double.MaxValue))
+                .OrderBy(x => x.RoadDuration)
+                .Select(x => x.Stop);
+        }
+        catch
+        {
+            return nearby.OrderBy(s =>
+                CalculateDistanceKm(query.Latitude, query.Longitude, s.Latitude!.Value, s.Longitude!.Value));
+        }
     }
 
     public async Task<IEnumerable<RouteAggregate>> Handle(GetPopularRoutesQuery query)
     {
         var allTrips = await tripRepository.ListAsync();
-        var tripsByRoute = allTrips.GroupBy(t => t.FkIdRoute)
+        var topRouteIds = allTrips.GroupBy(t => t.FkIdRoute)
             .OrderByDescending(g => g.Count())
             .Take(query.Limit)
             .Select(g => g.Key)
             .ToList();
 
         var allRoutes = await routeRepository.ListRoutes();
-        return allRoutes.Where(r => tripsByRoute.Contains(r.Id) && r.IsActive);
+        return allRoutes.Where(r => topRouteIds.Contains(r.Id) && r.IsActive);
     }
 
     public async Task<object> Handle(GetDemandAnalyticsQuery query)
@@ -68,13 +128,11 @@ public class DiscoveryQueryService(
 
         var demandByHour = trips.GroupBy(t => t.StartTime.Hour)
             .Select(g => new { Hour = g.Key, Count = g.Count() })
-            .OrderBy(x => x.Hour)
-            .ToList();
+            .OrderBy(x => x.Hour).ToList();
 
         var demandByDay = trips.GroupBy(t => t.StartTime.DayOfWeek)
             .Select(g => new { Day = g.Key.ToString(), Count = g.Count() })
-            .OrderBy(x => x.Day)
-            .ToList();
+            .OrderBy(x => x.Day).ToList();
 
         return new
         {

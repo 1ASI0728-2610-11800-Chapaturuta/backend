@@ -12,8 +12,11 @@ namespace Frock_backend.routes.Interface.REST.Transform
                 routeAggregate.Duration,
                 routeAggregate.IsActive,
                 routeAggregate.Status,
+                routeAggregate.DistanceMeters,
+                routeAggregate.DurationSeconds,
+                routeAggregate.Geometry,
                 routeAggregate.Stops.Select(stop => new StopInRoutesResource(stop.Id, stop.Stop.Name, stop.Stop.ImageUrl, stop.Stop.Address, stop.Stop.FkIdCompany, stop.Stop.FkIdDistrict)).ToList(),
-                routeAggregate.Schedules.Select(schedule => new ScheduleResource( schedule.StartTime, schedule.EndTime, schedule.DayOfWeek, schedule.Enabled)).ToList()
+                routeAggregate.Schedules.Select(schedule => new ScheduleResource(schedule.StartTime, schedule.EndTime, schedule.DayOfWeek, schedule.Enabled)).ToList()
             );
    
     }

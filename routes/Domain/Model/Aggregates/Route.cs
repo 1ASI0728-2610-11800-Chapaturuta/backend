@@ -12,8 +12,18 @@ namespace Frock_backend.routes.Domain.Model.Aggregates
         public int Frequency { get; set; } // in minutes
         public bool IsActive { get; set; } = true;
         public string Status { get; set; } = "Active"; // Draft, Active, Suspended, Archived
+        public decimal? DistanceMeters { get; set; }
+        public int? DurationSeconds { get; set; }
+        public string? Geometry { get; set; }
         public List<Schedule> Schedules = new();
         public List<RoutesStops> Stops = new();
+
+        public void SetOsrmData(double distanceMeters, double durationSeconds, string geometry)
+        {
+            DistanceMeters = (decimal)distanceMeters;
+            DurationSeconds = (int)durationSeconds;
+            Geometry = geometry;
+        }
         public RouteAggregate(double Price, int Duration, int Frequency)
         {
             this.Price = Price;

@@ -4,6 +4,8 @@ using Frock_backend.transport_Company.Domain.Services;
 using Frock_backend.transport_Company.Interfaces.REST.Resources;
 using Frock_backend.transport_Company.Interfaces.REST.Transform;
 using Frock_backend.shared.Domain.Services;
+using Frock_backend.IAM.Infrastructure.Pipeline.Middleware.Attributes;
+using Frock_backend.IAM.Domain.Model.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net.Mime;
@@ -25,6 +27,7 @@ namespace Frock_backend.transport_Company.Interfaces.REST
         /// <param name="resource">The company data including optional logo file</param>
         /// <returns>The newly created company resource.</returns>
         [HttpPost]
+        [Authorize(Role.TransportManager, Role.Admin)]
         [Consumes("multipart/form-data")]
         [SwaggerOperation(
             Summary = "Creates a new company with optional logo upload.",
@@ -32,6 +35,8 @@ namespace Frock_backend.transport_Company.Interfaces.REST
             OperationId = "CreateCompany")]
         [SwaggerResponse(StatusCodes.Status201Created, "The company was created.", typeof(CompanyResource))]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "The company could not be created due to invalid data.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "Forbidden - insufficient role")]
         public async Task<IActionResult> CreateCompany([FromForm] CreateCompanyFormResource resource)
         {
             try
@@ -128,12 +133,15 @@ namespace Frock_backend.transport_Company.Interfaces.REST
         /// <param name="resource">The updated company data.</param>
         /// <returns>The updated company resource.</returns>
         [HttpPut("{id}")]
+        [Authorize(Role.TransportManager, Role.Admin)]
         [SwaggerOperation(
             Summary = "Updates an existing company.",
             Description = "Updates an existing company with the provided data.",
             OperationId = "UpdateCompany")]
         [SwaggerResponse(StatusCodes.Status200OK, "The company was successfully updated.", typeof(CompanyResource))]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid request data.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "Forbidden - insufficient role")]
         [SwaggerResponse(StatusCodes.Status404NotFound, "The company was not found.")]
         public async Task<IActionResult> UpdateCompany(int id, [FromBody] UpdateCompanyResource resource)
         {
@@ -154,11 +162,14 @@ namespace Frock_backend.transport_Company.Interfaces.REST
         /// <param name="id">The company identifier.</param>
         /// <returns>No content if deletion was successful.</returns>
         [HttpDelete("{id}")]
+        [Authorize(Role.Admin)]
         [SwaggerOperation(
             Summary = "Deletes a company by ID.",
             Description = "Deletes a company for a given identifier.",
             OperationId = "DeleteCompany")]
         [SwaggerResponse(StatusCodes.Status204NoContent, "The company was successfully deleted.")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "Forbidden - insufficient role")]
         [SwaggerResponse(StatusCodes.Status404NotFound, "The company was not found.")]
         public async Task<IActionResult> DeleteCompany(int id)
         {

@@ -4,6 +4,8 @@ using Frock_backend.stops.Domain.Services;
 using Frock_backend.stops.Interfaces.REST.Resources;
 using Frock_backend.stops.Interfaces.REST.Transform;
 using Frock_backend.shared.Domain.Services;
+using Frock_backend.IAM.Infrastructure.Pipeline.Middleware.Attributes;
+using Frock_backend.IAM.Domain.Model.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net.Mime;
@@ -33,6 +35,7 @@ namespace Frock_backend.stops.Interfaces.REST
         /// A response as an action result containing the created stop, or bad request if the stop was not created.
         /// </returns>
         [HttpPost]
+        [Authorize(Role.TransportManager, Role.Admin)]
         [Consumes("multipart/form-data")]
         [SwaggerOperation(
             Summary = "Creates a new stop with optional image upload.",
@@ -41,6 +44,8 @@ namespace Frock_backend.stops.Interfaces.REST
             )]
         [SwaggerResponse(201, "The stop was created", typeof(StopResource))]
         [SwaggerResponse(400, "The stop was not created")]
+        [SwaggerResponse(401, "Unauthorized - token missing or invalid")]
+        [SwaggerResponse(403, "Forbidden - insufficient role")]
         [SwaggerResponse(500, "An error occurred while creating the stop")]
         [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(StopResource))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -215,11 +220,14 @@ namespace Frock_backend.stops.Interfaces.REST
 
 
         [HttpDelete("{id}")]
+        [Authorize(Role.TransportManager, Role.Admin)]
         [SwaggerOperation(
             Summary = "Deletes a stop by ID",
             Description = "Deletes a stop for a given stop identifier",
             OperationId = "DeleteStop")]
         [SwaggerResponse(StatusCodes.Status204NoContent, "The stop was successfully deleted")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "Forbidden - insufficient role")]
         [SwaggerResponse(StatusCodes.Status404NotFound, "The stop was not found")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid request (e.g., malformed ID)")]
         public async Task<IActionResult> DeleteStop(int id)
@@ -236,12 +244,15 @@ namespace Frock_backend.stops.Interfaces.REST
         }
 
         [HttpPut("{id}")]
+        [Authorize(Role.TransportManager, Role.Admin)]
         [SwaggerOperation(
             Summary = "Updates an existing stop by ID.",
             Description = "Updates an existing stop with the provided data. The ID in the URL must match the ID in the request body.",
             OperationId = "UpdateStop")]
         [SwaggerResponse(StatusCodes.Status200OK, "The stop was successfully updated.", typeof(StopResource))]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid request data (e.g., ID mismatch or validation error).")]
+        [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+        [SwaggerResponse(StatusCodes.Status403Forbidden, "Forbidden - insufficient role")]
         [SwaggerResponse(StatusCodes.Status404NotFound, "The stop with the specified ID was not found.")]
         public async Task<IActionResult> UpdateStop(int id, [FromBody] UpdateStopResource resource)
         {

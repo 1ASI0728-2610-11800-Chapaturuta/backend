@@ -3,12 +3,14 @@ using Frock_backend.Notifications.Domain.Model.Queries;
 using Frock_backend.Notifications.Domain.Services;
 using Frock_backend.Notifications.Interfaces.REST.Resources;
 using Frock_backend.Notifications.Interfaces.REST.Transform;
+using Frock_backend.IAM.Infrastructure.Pipeline.Middleware.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net.Mime;
 
 namespace Frock_backend.Notifications.Interfaces.REST;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 [Produces(MediaTypeNames.Application.Json)]
