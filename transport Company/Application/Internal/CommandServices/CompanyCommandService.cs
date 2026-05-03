@@ -40,6 +40,11 @@ namespace Frock_backend.transport_Company.Application.Internal.CommandServices
             companyToUpdate.Name = command.Name;
             companyToUpdate.LogoUrl = command.LogoUrl;
             companyToUpdate.FkIdUser = command.FkIdUser;
+            companyToUpdate.Ruc = command.Ruc;
+            companyToUpdate.Phone = command.Phone;
+            companyToUpdate.Email = command.Email;
+            companyToUpdate.Address = command.Address;
+            companyToUpdate.Description = command.Description;
 
             try
             {

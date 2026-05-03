@@ -1,4 +1,4 @@
-﻿using Frock_backend.transport_Company.Domain.Model.Commands;
+using Frock_backend.transport_Company.Domain.Model.Commands;
 using Frock_backend.transport_Company.Interfaces.REST.Resources;
 
 
@@ -12,7 +12,12 @@ namespace Frock_backend.transport_Company.Interfaces.REST.Transform
                 resource.Id,
                 resource.Name,
                 resource.LogoUrl,
-                resource.FkIdUser
+                resource.FkIdUser,
+                resource.Ruc,
+                resource.Phone,
+                resource.Email,
+                resource.Address,
+                resource.Description
             );
         }
     }

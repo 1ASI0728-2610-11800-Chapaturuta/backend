@@ -60,49 +60,113 @@ Context/
         └── *Controller.cs
 ```
 
-## Preparación de datos OSM
+## Setup automatizado para nuevos colaboradores
 
-> Antes de ejecutar `docker compose up`, copia el archivo `peru-latest.osm.pbf` (descargado de https://download.geofabrik.de/south-america/peru.html) dentro de la carpeta `./osm-data/` en la raíz del proyecto. El archivo NO se incluye en el repositorio (está en `.gitignore`).
+El proyecto está organizado para que un compañero solo tenga que hacer **`git clone` + dos comandos Docker**. No hace falta descargar manualmente el PBF, instalar `osmium`, ni ejecutar nada en el host.
+
+### Diagrama de servicios
+
+```
+┌──────────────────────── perfil "setup" (correr 1 sola vez) ────────────────┐
+│  pbf-downloader  ──>  osrm-preprocess                                      │
+│  (curl Geofabrik)     (osrm-extract / partition / customize)               │
+│  ./osm-data/peru-260425.osm.pbf      ./osrm-data/peru-260425.osrm*         │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────── perfil por defecto (uso diario) ───────────────────┐
+│  mysql           ──>  backend                                              │
+│  osrm-backend    ──>  (consumido por backend on-demand)                    │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────── perfil "tiles" (opcional, +6 GB) ──────────────────┐
+│  osm-import (tiles-setup, 1 vez) ──>  osm-tile-server (tiles)              │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Cómo funciona el setup
+
+1. **`pbf-downloader`** (perfil `setup`) usa `curlimages/curl` para descargar `peru-latest.osm.pbf` desde Geofabrik (~240 MB) y guardarlo como `./osm-data/peru-260425.osm.pbf`. Si el archivo ya existe, no hace nada — es idempotente.
+2. **`osrm-preprocess`** (perfil `setup`) depende de que el downloader termine con éxito (`condition: service_completed_successfully`). Ejecuta `osrm-extract` → `osrm-partition` → `osrm-customize` y deja los `.osrm*` en `./osrm-data/`. Esto sí tarda (10–30 min, depende del hardware).
+3. **`backend`** ya **no** depende de OSRM en `depends_on`. Si OSRM no está disponible, las features de routing (preview, ETA, geometry de rutas) devuelven errores controlados, pero el resto de endpoints CRUD funcionan. Esto evita que un compañero tenga que esperar 30 min antes de poder ver Swagger.
+4. **Datos geográficos** (regiones / provincias / distritos) se cargan al arrancar desde un snapshot OSM embebido en el repo (`stops/Infrastructure/Seeding/geo-data.json`, 1694 distritos). Generado offline con `backend/scripts/extract-geo.mjs` a partir del PBF + GDAL. Si el API externa configurada en `GeoApi:BaseUrl` está disponible, se usa esa; si falla (timeout, 502, etc.), cae automáticamente al snapshot local. **Cero acción manual**.
+5. **Tiles del mapa** (`osm-tile-server`) ahora viven en el perfil `tiles` y NO arrancan por defecto, porque el primer import demora 30 min y consume ~6 GB. El frontend tiene fallback a tiles públicos de OSM, así que el mapa funciona aunque el tile server local esté apagado.
+
+### Inicio rápido (compañero nuevo)
+
+```bash
+# 1. (una vez) descargar PBF + preprocesar OSRM
+cd backend
+docker compose --profile setup up
+
+# 2. (siempre) levantar la stack normal
+docker compose up -d --build
+
+# 3. (opcional) levantar tile server local para mapas
+docker compose --profile tiles-setup up osm-import   # 1 vez, ~30 min
+docker compose --profile tiles up -d osm-tile-server # uso normal
+```
+
+Verificación rápida:
+- Swagger: http://localhost:5027/swagger/index.html
+- Health: http://localhost:5027/health
+- OSRM (si terminó preprocess): http://localhost:5001/route/v1/driving/-77.0428,-12.0464;-77.0500,-12.0500
+- Tiles (si está activo): http://localhost:8088/tile/10/302/486.png
+
+### Re-generar el snapshot geográfico
+
+Si quieres actualizar `stops/Infrastructure/Seeding/geo-data.json` (rara vez — los distritos peruanos cambian poco):
+
+```bash
+# 1. asegúrate de tener el PBF
+docker compose --profile setup up pbf-downloader
+
+# 2. generar geojsonseq con GDAL (extrae multipolygons admin_level 4/6/8)
+docker run --rm -v "$(pwd)/osm-data:/data" ghcr.io/osgeo/gdal:alpine-small-latest \
+  ogr2ogr -f GeoJSONSeq /data/admin-poly.geojsonseq /data/peru-260425.osm.pbf multipolygons \
+  -where "boundary='administrative' AND admin_level IN ('4','6','8')"
+
+# 3. correr el script Node (genera geo-data.json con jerarquía dep→prov→dist)
+cd scripts
+npm install
+node --max-old-space-size=4096 extract-geo.mjs
+```
+
+El script usa `@turf/boolean-point-in-polygon` para inferir la jerarquía cuando OSM no provee tags `is_in:*` y genera UBIGEOs sintéticos compatibles con `GeoResponseDto`.
+
+### Estructura de carpetas relevante
 
 ```
 backend/
-├── osm-data/
-│   └── peru-latest.osm.pbf   ← copiar aquí manualmente
-├── osrm-data/                 ← se llena automáticamente tras preprocesar
-└── tile-data/                 ← cache de tiles (volumen Docker)
+├── osm-data/                                  ← .gitignore (PBF se descarga)
+│   ├── peru-260425.osm.pbf                    ← descargado por pbf-downloader
+│   └── admin-poly.geojsonseq                  ← intermediate (regenerar geo-data)
+├── osrm-data/                                 ← .gitignore (lo crea osrm-preprocess)
+├── scripts/
+│   └── extract-geo.mjs                        ← regenera geo-data.json
+└── stops/Infrastructure/Seeding/
+    └── geo-data.json                          ← EN EL REPO (1694 distritos)
 ```
-
-### Paso obligatorio — preprocesar el PBF (una sola vez)
-
-Ejecutar **una única vez** después de copiar el PBF:
-
-```bash
-docker compose --profile setup run --rm osrm-preprocess
-```
-
-Esto extrae, particiona y personaliza los datos de Perú para OSRM (puede tardar 10–30 min según hardware).
 
 ---
 
-## Inicio rapido
+## Inicio rápido (legacy)
 
 ### Requisitos
 
 - Docker y Docker Compose
-- Archivo `peru-latest.osm.pbf` copiado en `./osm-data/` (ver sección anterior)
-- Preprocesamiento OSRM ejecutado al menos una vez
 
 ### Ejecutar con Docker
 
 ```bash
-docker compose up -d --build
+docker compose --profile setup up   # 1ra vez: descarga PBF + preprocesa OSRM
+docker compose up -d --build        # uso normal
 ```
 
 Esto levanta:
 - **MySQL 8.0** en puerto `3307`
 - **Backend API** en puerto `5027`
 - **OSRM routing** en puerto `5001`
-- **OSM Tile Server** en puerto `8088` (primer arranque puede tardar según hardware al importar el PBF)
+- **OSM Tile Server** (perfil `tiles`, opcional) en puerto `8088`
 
 Swagger UI: http://localhost:5027/swagger/index.html
 

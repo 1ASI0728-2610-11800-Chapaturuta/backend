@@ -16,5 +16,9 @@ appsettings.Production.json
 ## OSM data (large files, not committed)
 osm-data/*.osm.pbf
 osm-data/*.osrm*
+osm-data/*.geojsonseq
 osrm-data/
 tile-data/
+
+## scripts node_modules (regenerar con npm install)
+scripts/node_modules/

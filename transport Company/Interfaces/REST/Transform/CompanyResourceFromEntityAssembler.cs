@@ -1,4 +1,4 @@
-﻿using Frock_backend.transport_Company.Domain.Model.Aggregates;
+using Frock_backend.transport_Company.Domain.Model.Aggregates;
 using Frock_backend.transport_Company.Interfaces.REST.Resources;
 
 
@@ -10,8 +10,13 @@ namespace Frock_backend.transport_Company.Interfaces.REST.Transform
             new CompanyResource(
                 entity.Id,
                 entity.Name,
-                entity.LogoUrl,
-                entity.FkIdUser
+                entity.LogoUrl ?? string.Empty,
+                entity.FkIdUser,
+                entity.Ruc,
+                entity.Phone,
+                entity.Email,
+                entity.Address,
+                entity.Description
             );
     }
 }

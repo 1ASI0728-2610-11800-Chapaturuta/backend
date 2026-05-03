@@ -42,4 +42,11 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.0" />
     <PackageReference Include="System.Threading" Version="4.3.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="stops/Infrastructure/Seeding/geo-data.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

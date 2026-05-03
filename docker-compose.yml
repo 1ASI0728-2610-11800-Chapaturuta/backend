@@ -16,7 +16,30 @@ services:
       retries: 20
       start_period: 30s
 
-  # Run once to preprocess the PBF: docker compose --profile setup run --rm osrm-preprocess
+  # ──────────────────────────────────────────────────────────────────────────
+  # SETUP profile services — run once with: docker compose --profile setup up
+  # Downloads PBF and preprocesses it for OSRM.
+  # ──────────────────────────────────────────────────────────────────────────
+
+  # Auto-downloads the Peru OSM PBF from Geofabrik if it's not already on disk.
+  pbf-downloader:
+    image: curlimages/curl:latest
+    profiles:
+      - setup
+    volumes:
+      - ./osm-data:/data
+    entrypoint: >
+      sh -c "
+        if [ ! -f /data/peru-260425.osm.pbf ]; then
+          echo 'Downloading peru-latest.osm.pbf from Geofabrik...';
+          curl -L -o /data/peru-260425.osm.pbf https://download.geofabrik.de/south-america/peru-latest.osm.pbf &&
+          echo 'PBF download complete.';
+        else
+          echo 'PBF already exists, skipping download.';
+        fi
+      "
+
+  # Extracts/partitions/customizes the PBF for OSRM. Depends on the downloader.
   osrm-preprocess:
     image: ghcr.io/project-osrm/osrm-backend:latest
     profiles:
@@ -24,6 +47,9 @@ services:
     volumes:
       - ./osm-data:/osm-data
       - ./osrm-data:/osrm-data
+    depends_on:
+      pbf-downloader:
+        condition: service_completed_successfully
     command: >
       sh -c "
         osrm-extract -p /opt/car.lua /osm-data/peru-260425.osm.pbf -o /osrm-data/peru-260425.osrm &&
@@ -31,6 +57,9 @@ services:
         osrm-customize /osrm-data/peru-260425.osrm
       "
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # ROUTING — OSRM. Uses default profile but does NOT block backend startup.
+  # ──────────────────────────────────────────────────────────────────────────
   osrm-backend:
     image: ghcr.io/project-osrm/osrm-backend:latest
     container_name: frock-osrm
@@ -47,7 +76,11 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # Run once to import PBF into PostgreSQL: docker compose --profile tiles-setup run --rm osm-import
+  # ──────────────────────────────────────────────────────────────────────────
+  # TILES profile (optional, ~30 min first import + ~6 GB disk).
+  # Run with: docker compose --profile tiles up -d
+  # Frontend has fallback to public OSM tiles if this is not running.
+  # ──────────────────────────────────────────────────────────────────────────
   osm-import:
     image: overv/openstreetmap-tile-server:latest
     profiles:
@@ -63,6 +96,8 @@ services:
   osm-tile-server:
     image: overv/openstreetmap-tile-server:latest
     container_name: frock-tiles
+    profiles:
+      - tiles
     volumes:
       - osm_pg_data:/var/lib/postgresql/15/main
       - tile_data:/data/tiles
@@ -73,6 +108,9 @@ services:
     command: run
     restart: unless-stopped
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # BACKEND
+  # ──────────────────────────────────────────────────────────────────────────
   backend:
     build:
       context: .
@@ -92,27 +130,10 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      osrm-backend:
-        condition: service_healthy
-
-  # ── FASE 2 (comentado — descomentar para activar Overpass) ──────────────────
-  # overpass-api:
-  #   image: wiktorn/overpass-api:latest
-  #   container_name: frock-overpass
-  #   volumes:
-  #     - ./osm-data/peru-260425.osm.pbf:/osm-data/peru-260425.osm.pbf:ro
-  #     - overpass_data:/db
-  #   environment:
-  #     OVERPASS_MODE: init
-  #     OVERPASS_PLANET_URL: /osm-data/peru-260425.osm.pbf
-  #     OVERPASS_DIFF_URL: ""
-  #     OVERPASS_RULES_LOAD: "10"
-  #   ports:
-  #     - "8089:80"
-  #   restart: unless-stopped
+      # NOTE: backend does NOT wait for OSRM to be healthy.
+      # OSRM features (route preview, ETA) degrade gracefully if OSRM is down.
 
 volumes:
   frock_mysql_data:
   osm_pg_data:
   tile_data:
-  # overpass_data:

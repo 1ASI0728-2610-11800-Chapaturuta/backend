@@ -1,4 +1,4 @@
-﻿using Frock_backend.transport_Company.Domain.Model.Commands;
+using Frock_backend.transport_Company.Domain.Model.Commands;
 
 namespace Frock_backend.transport_Company.Domain.Model.Aggregates
 {
@@ -8,6 +8,11 @@ namespace Frock_backend.transport_Company.Domain.Model.Aggregates
         public string Name { get; set; }
         public string? LogoUrl { get; set; }
         public int FkIdUser { get; set; }
+        public string? Ruc { get; set; }
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+        public string? Address { get; set; }
+        public string? Description { get; set; }
 
         protected Company()
         {
@@ -29,6 +34,11 @@ namespace Frock_backend.transport_Company.Domain.Model.Aggregates
             Name = command.Name;
             LogoUrl = command.LogoUrl;
             FkIdUser = command.FkIdUser;
+            Ruc = command.Ruc;
+            Phone = command.Phone;
+            Email = command.Email;
+            Address = command.Address;
+            Description = command.Description;
         }
 
         public Company(DeleteCompanyCommand command)
