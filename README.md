@@ -95,8 +95,12 @@ El proyecto está organizado para que un compañero solo tenga que hacer **`git 
 
 ```bash
 # 1. (una vez) descargar PBF + preprocesar OSRM
+#    Usamos `run --rm` para que SOLO se ejecute la cadena setup
+#    (pbf-downloader -> osrm-preprocess) y no arranquen mysql/osrm-backend
+#    en paralelo. Si osrm-backend arranca antes que osrm-preprocess termine,
+#    entra en crash loop con warnings "Missing/Broken File".
 cd backend
-docker compose --profile setup up
+docker compose --profile setup run --rm osrm-preprocess
 
 # 2. (siempre) levantar la stack normal
 docker compose up -d --build
@@ -158,8 +162,8 @@ backend/
 ### Ejecutar con Docker
 
 ```bash
-docker compose --profile setup up   # 1ra vez: descarga PBF + preprocesa OSRM
-docker compose up -d --build        # uso normal
+docker compose --profile setup run --rm osrm-preprocess  # 1ra vez: descarga PBF + preprocesa OSRM
+docker compose up -d --build                              # uso normal
 ```
 
 Esto levanta:

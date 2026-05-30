@@ -30,13 +30,27 @@ services:
       - ./osm-data:/data
     entrypoint: >
       sh -c "
-        if [ ! -f /data/peru-260425.osm.pbf ]; then
-          echo 'Downloading peru-latest.osm.pbf from Geofabrik...';
-          curl -L -o /data/peru-260425.osm.pbf https://download.geofabrik.de/south-america/peru-latest.osm.pbf &&
-          echo 'PBF download complete.';
-        else
-          echo 'PBF already exists, skipping download.';
-        fi
+        set -e;
+        TARGET=/data/peru-260425.osm.pbf;
+        MIN_SIZE=200000000;
+        if [ -f \"$$TARGET\" ] && [ \"$$(wc -c < \"$$TARGET\")\" -ge \"$$MIN_SIZE\" ]; then
+          echo 'PBF already exists and size OK, skipping download.';
+          exit 0;
+        fi;
+        if [ -f \"$$TARGET\" ]; then
+          echo 'Existing PBF is too small (likely truncated), removing.';
+          rm -f \"$$TARGET\";
+        fi;
+        echo 'Downloading peru-latest.osm.pbf from Geofabrik...';
+        curl -L --fail --retry 5 --retry-delay 10 --retry-all-errors -C - -o \"$$TARGET.part\" https://download.geofabrik.de/south-america/peru-latest.osm.pbf;
+        SIZE=$$(wc -c < \"$$TARGET.part\");
+        if [ \"$$SIZE\" -lt \"$$MIN_SIZE\" ]; then
+          echo \"Downloaded file too small ($$SIZE bytes), aborting.\";
+          rm -f \"$$TARGET.part\";
+          exit 1;
+        fi;
+        mv \"$$TARGET.part\" \"$$TARGET\";
+        echo 'PBF download complete.';
       "
 
   # Extracts/partitions/customizes the PBF for OSRM. Depends on the downloader.

@@ -22,3 +22,6 @@ tile-data/
 
 ## scripts node_modules (regenerar con npm install)
 scripts/node_modules/
+
+## Claude Code (local)
+.claude/
