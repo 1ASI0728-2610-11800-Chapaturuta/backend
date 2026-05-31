@@ -5,8 +5,8 @@ namespace Frock_backend.Trips.Interfaces.REST.Resources;
 public record CreateTripResource(
     [property: SwaggerSchema("ID of the passenger user who is taking this trip")]
     int FkIdUser,
-    [property: SwaggerSchema("ID of the driver assigned to this trip")]
-    int FkIdDriver,
+    [property: SwaggerSchema("ID of the driver assigned to this trip (optional; null if no driver assigned yet)")]
+    int? FkIdDriver,
     [property: SwaggerSchema("ID of the route this trip follows")]
     int FkIdRoute,
     [property: SwaggerSchema("ID of the stop where the passenger boards the vehicle")]

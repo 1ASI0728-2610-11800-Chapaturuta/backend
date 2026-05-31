@@ -8,7 +8,6 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
         public string Name { get;  set; }
         public string? GoogleMapsUrl { get;  set; }
         public string? ImageUrl { get;  set; }
-        public string Phone { get;  set; }
         public int FkIdCompany { get;  set; }
         public string Address { get;  set; }
         public string Reference { get;  set; }
@@ -21,7 +20,6 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
             Name = string.Empty;
             GoogleMapsUrl = string.Empty;
             ImageUrl = string.Empty;
-            Phone = string.Empty;
             FkIdCompany = 0;
             Address = string.Empty;
             Reference = string.Empty;
@@ -42,7 +40,6 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
             Name = command.Name;
             GoogleMapsUrl = command.GoogleMapsUrl;
             ImageUrl = command.ImageUrl;
-            Phone = command.Phone;
             FkIdCompany = command.FkIdCompany;
             Address = command.Address;
             Reference = command.Reference;
@@ -57,7 +54,6 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
             Name = command.Name;
             GoogleMapsUrl = command.GoogleMapsUrl;
             ImageUrl = command.ImageUrl;
-            Phone = command.Phone;
             FkIdCompany = command.FkIdCompany;
             Address = command.Address;
             Reference = command.Reference;
@@ -72,7 +68,6 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
             Name = "";
             GoogleMapsUrl = "";
             ImageUrl = "";
-            Phone = "";
             FkIdCompany = 0;
             Address = "";
             Reference = "";

@@ -4,7 +4,7 @@ public class Trip
 {
     public int Id { get; }
     public int FkIdUser { get; set; }
-    public int FkIdDriver { get; set; }
+    public int? FkIdDriver { get; set; }
     public int FkIdRoute { get; set; }
     public int FkIdOriginStop { get; set; }
     public int FkIdDestinationStop { get; set; }
@@ -15,7 +15,7 @@ public class Trip
 
     protected Trip() { }
 
-    public Trip(int fkIdUser, int fkIdDriver, int fkIdRoute, int fkIdOriginStop, int fkIdDestinationStop, double? price)
+    public Trip(int fkIdUser, int? fkIdDriver, int fkIdRoute, int fkIdOriginStop, int fkIdDestinationStop, double? price)
     {
         FkIdUser = fkIdUser;
         FkIdDriver = fkIdDriver;

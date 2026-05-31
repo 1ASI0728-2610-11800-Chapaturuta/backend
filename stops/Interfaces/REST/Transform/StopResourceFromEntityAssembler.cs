@@ -18,7 +18,6 @@ namespace Frock_backend.stops.Interfaces.REST.Transform
                 entity.Name,
                 entity.GoogleMapsUrl,
                 entity.ImageUrl,
-                entity.Phone,
                 entity.FkIdCompany,
                 entity.Address,
                 entity.Reference,

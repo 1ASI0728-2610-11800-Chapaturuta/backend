@@ -61,7 +61,6 @@ namespace Frock_backend.stops.Application.Internal.CommandServices
             stopToUpdate.Name = command.Name;
             stopToUpdate.GoogleMapsUrl = command.GoogleMapsUrl;
             stopToUpdate.ImageUrl = command.ImageUrl;
-            stopToUpdate.Phone = command.Phone;
             stopToUpdate.FkIdCompany = command.FkIdCompany;
             stopToUpdate.Address = command.Address;
             stopToUpdate.Reference = command.Reference;

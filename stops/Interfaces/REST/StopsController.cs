@@ -68,7 +68,6 @@ namespace Frock_backend.stops.Interfaces.REST
                     resource.Name,
                     resource.GoogleMapsUrl ?? string.Empty,
                     imageUrl,
-                    resource.Phone,
                     resource.FkIdCompany,
                     resource.Address,
                     resource.Reference,

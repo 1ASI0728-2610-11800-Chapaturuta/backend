@@ -11,8 +11,6 @@ namespace Frock_backend.stops.Interfaces.REST.Resources
         string GoogleMapsUrl,
         [property: SwaggerSchema("Public URL of the stop's photo image")]
         string ImageUrl,
-        [property: SwaggerSchema("Contact phone number for the stop, e.g. 01-4441234")]
-        string Phone,
         [property: SwaggerSchema("ID of the transport company that owns this stop")]
         int FkIdCompany,
         [property: SwaggerSchema("Street address of the bus stop, e.g. Av. Larco 123")]

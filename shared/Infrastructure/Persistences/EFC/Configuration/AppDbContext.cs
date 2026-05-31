@@ -93,7 +93,6 @@ namespace Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration
             builder.Entity<Stop>().Property(f => f.Name).IsRequired();
             builder.Entity<Stop>().Property(f => f.GoogleMapsUrl);
             builder.Entity<Stop>().Property(f => f.ImageUrl);
-            builder.Entity<Stop>().Property(f => f.Phone).IsRequired();
             builder.Entity<Stop>().Property(f => f.Address).IsRequired();
             builder.Entity<Stop>().Property(f => f.Reference).IsRequired();
             builder.Entity<Stop>().Property(f => f.Latitude);

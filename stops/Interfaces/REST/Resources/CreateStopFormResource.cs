@@ -11,10 +11,7 @@ namespace Frock_backend.stops.Interfaces.REST.Resources
         public string? GoogleMapsUrl { get; set; }
         
         public IFormFile? ImageFile { get; set; }
-        
-        [Required]
-        public string Phone { get; set; } = string.Empty;
-        
+
         [Required]
         public int FkIdCompany { get; set; }
         
