@@ -84,43 +84,4 @@ public class UsersController(IUserQueryService userQueryService, IUserCommandSer
         var userResource = UserResourceFromEntityAssembler.ToResourceFromEntity(user);
         return Ok(userResource);
     }
-
-    [HttpPost("driver-profile")]
-    [SwaggerOperation(Summary = "Create driver profile", OperationId = "CreateDriverProfile")]
-    [SwaggerResponse(StatusCodes.Status201Created, "Driver profile created", typeof(DriverProfileResource))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Profile already exists")]
-    public async Task<IActionResult> CreateDriverProfile([FromBody] CreateDriverProfileResource resource)
-    {
-        try
-        {
-            var command = new CreateDriverProfileCommand(
-                resource.FkIdUser,
-                resource.LicenseNumber,
-                resource.VehiclePlate,
-                resource.VehicleModel,
-                resource.VehicleYear,
-                resource.VehicleCapacity);
-            var profile = await userCommandService.Handle(command);
-            if (profile == null) return BadRequest("Could not create driver profile");
-            var profileResource = DriverProfileResourceFromEntityAssembler.ToResourceFromEntity(profile);
-            return CreatedAtAction(nameof(GetDriverProfile), new { userId = profile.FkIdUser }, profileResource);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    [HttpGet("driver-profile/{userId}")]
-    [SwaggerOperation(Summary = "Get driver profile by user ID", OperationId = "GetDriverProfile")]
-    [SwaggerResponse(StatusCodes.Status200OK, "Driver profile found", typeof(DriverProfileResource))]
-    [SwaggerResponse(StatusCodes.Status404NotFound, "Driver profile not found")]
-    public async Task<IActionResult> GetDriverProfile(int userId)
-    {
-        var query = new GetDriverProfileByUserIdQuery(userId);
-        var profile = await userQueryService.Handle(query);
-        if (profile == null) return NotFound();
-        var resource = DriverProfileResourceFromEntityAssembler.ToResourceFromEntity(profile);
-        return Ok(resource);
-    }
 }

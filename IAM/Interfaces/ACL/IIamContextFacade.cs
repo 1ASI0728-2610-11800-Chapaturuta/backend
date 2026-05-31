@@ -12,4 +12,6 @@ public interface IIamContextFacade
     Task<string> FetchUsernameByUserId(int userId);
 
     Task<string> FetchEmailByUserId(int userId);
+
+    Task<string?> FetchUserRoleByIdAsync(int userId);
 }

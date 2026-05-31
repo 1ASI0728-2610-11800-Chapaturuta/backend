@@ -1,4 +1,4 @@
-﻿using Frock_backend.routes.Domain.Model.Aggregates;
+using Frock_backend.routes.Domain.Model.Aggregates;
 using Frock_backend.routes.Domain.Model.Queries;
 using Frock_backend.routes.Domain.Repository;
 using Frock_backend.routes.Domain.Service;
@@ -7,16 +7,16 @@ namespace Frock_backend.routes.Application.Internal.QueryServices
 {
     public class RouteQueryService(IRouteRepository routeRepository) : IRouteQueryService
     {
-        public async Task<IEnumerable<RouteAggregate>> Handle(GetAllRoutesByFkCompanyIdQuery query)
+        public async Task<IEnumerable<RouteAggregate>> Handle(GetAllRoutesByFkDriverIdQuery query)
         {
             try
             {
-                return await routeRepository.FindByCompanyId(query.FkCompanyId);
+                return await routeRepository.FindByDriverId(query.FkDriverId);
             }
             catch (Exception e)
             {
 
-                throw new Exception($"Error retrieving routes for company: {e.Message}", e);
+                throw new Exception($"Error retrieving routes for driver: {e.Message}", e);
             }
         }
 

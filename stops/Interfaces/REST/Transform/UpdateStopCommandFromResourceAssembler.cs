@@ -1,4 +1,4 @@
-﻿using Frock_backend.stops.Domain.Model.Commands;
+using Frock_backend.stops.Domain.Model.Commands;
 using Frock_backend.stops.Interfaces.REST.Resources;
 
 namespace Frock_backend.stops.Interfaces.REST.Transform
@@ -12,7 +12,7 @@ namespace Frock_backend.stops.Interfaces.REST.Transform
                 resource.Name,
                 resource.GoogleMapsUrl,
                 resource.ImageUrl,
-                resource.FkIdCompany,
+                resource.FkIdDriver,
                 resource.Address,
                 resource.Reference,
                 resource.FkIdDistrict,

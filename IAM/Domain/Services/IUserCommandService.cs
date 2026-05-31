@@ -9,5 +9,4 @@ public interface IUserCommandService
     Task Handle(SignUpCommand command);
     Task<User?> Handle(UpdateUserProfileCommand command);
     Task<User?> Handle(UpdateUserRoleCommand command);
-    Task<DriverProfile?> Handle(CreateDriverProfileCommand command);
 }

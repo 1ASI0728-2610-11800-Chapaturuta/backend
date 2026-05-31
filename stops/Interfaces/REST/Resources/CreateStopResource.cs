@@ -1,7 +1,7 @@
-﻿namespace Frock_backend.stops.Interfaces.REST.Resources
+namespace Frock_backend.stops.Interfaces.REST.Resources
 {
     /// <summary>
-    /// Represents the data required to create a favorite source. 
+    /// Represents the data required to create a favorite source.
     /// </summary>
     /// <param name="Name">The Stop's name</param>
     /// .... etc.
@@ -9,7 +9,7 @@
         string Name, // The name of the stop
         string GoogleMapsUrl, // The URL to the stop's location on Google Maps, por mientras en null
         string ImageUrl, // The URL to the stop's image
-        int FkIdCompany, // This is a foreign key to a Company entity
+        int FkIdDriver, // This is a foreign key to a Driver aggregate (BC Driver)
         string Address, // The address of the stop
         string Reference, // A reference or additional information about the stop
         int FkIdDistrict, // This is a foreign key to a District entity

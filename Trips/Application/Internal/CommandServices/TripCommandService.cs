@@ -10,7 +10,7 @@ public class TripCommandService(ITripRepository tripRepository, IUnitOfWork unit
 {
     public async Task<Trip?> Handle(CreateTripCommand command)
     {
-        var trip = new Trip(command.FkIdUser, command.FkIdDriver, command.FkIdRoute, command.FkIdOriginStop, command.FkIdDestinationStop, command.Price);
+        var trip = new Trip(command.FkIdUser, command.FkIdDriver, command.FkIdRoute, command.FkIdOriginStop, command.FkIdDestinationStop, command.Price, command.AvailableSeats);
 
         try
         {

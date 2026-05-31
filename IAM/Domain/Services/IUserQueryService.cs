@@ -33,5 +33,4 @@ public interface IUserQueryService
     Task<User?> Handle(GetUserByUsernameQuery query);
 
     Task<User?> Handle(GetUserByEmailQuery query);
-    Task<DriverProfile?> Handle(GetDriverProfileByUserIdQuery query);
 }

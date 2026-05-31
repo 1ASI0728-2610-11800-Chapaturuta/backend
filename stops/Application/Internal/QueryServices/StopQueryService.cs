@@ -1,4 +1,4 @@
-﻿using Frock_backend.stops.Domain.Model.Aggregates;
+using Frock_backend.stops.Domain.Model.Aggregates;
 using Frock_backend.stops.Domain.Model.Queries;
 using Frock_backend.stops.Domain.Repositories;
 using Frock_backend.stops.Domain.Services;
@@ -8,9 +8,9 @@ namespace Frock_backend.stops.Application.Internal.QueryServices
     public class StopQueryService(IStopRepository stopRepository) : IStopQueryService
     {
 
-        public async Task<IEnumerable<Stop>> Handle(GetAllStopsByFkIdCompanyQuery query)
+        public async Task<IEnumerable<Stop>> Handle(GetAllStopsByFkIdDriverQuery query)
         {
-            return await stopRepository.FindByFkIdCompanyAsync(query.FkIdCompany);
+            return await stopRepository.FindByFkIdDriverAsync(query.FkIdDriver);
         }
         public async Task<IEnumerable<Stop>> Handle(GetAllStopsByFkIdDistrictQuery query)
         {
@@ -30,9 +30,9 @@ namespace Frock_backend.stops.Application.Internal.QueryServices
             return await stopRepository.ListAsync();
         }
 
-        public async Task<Stop?> Handle(GetStopByNameAndFkIdCompanyQuery query)
+        public async Task<Stop?> Handle(GetStopByNameAndFkIdDriverQuery query)
         {
-            return await stopRepository.FindByNameAndFkIdCompanyAsync(query.Name, query.FkIdCompany);
+            return await stopRepository.FindByNameAndFkIdDriverAsync(query.Name, query.FkIdDriver);
 
         }
     }

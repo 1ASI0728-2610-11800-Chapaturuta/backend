@@ -15,6 +15,6 @@ public class SignUpResource
     [SwaggerSchema("Account password (min 8 chars, must include uppercase letter and number)")]
     public string Password { get; set; } = string.Empty;
 
-    [SwaggerSchema("User role: 0 = Traveller, 1 = TransportManager, 2 = Driver, 3 = Admin")]
+    [SwaggerSchema("User role: 0 = Traveller, 2 = Driver, 3 = Admin")]
     public Role Role { get; set; }
 }

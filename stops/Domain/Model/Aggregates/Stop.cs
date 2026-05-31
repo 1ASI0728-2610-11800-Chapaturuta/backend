@@ -1,4 +1,4 @@
-﻿using Frock_backend.stops.Domain.Model.Commands;
+using Frock_backend.stops.Domain.Model.Commands;
 
 namespace Frock_backend.stops.Domain.Model.Aggregates
 {
@@ -8,7 +8,7 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
         public string Name { get;  set; }
         public string? GoogleMapsUrl { get;  set; }
         public string? ImageUrl { get;  set; }
-        public int FkIdCompany { get;  set; }
+        public int FkIdDriver { get;  set; }
         public string Address { get;  set; }
         public string Reference { get;  set; }
         public int FkIdDistrict { get;  set; }
@@ -20,19 +20,19 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
             Name = string.Empty;
             GoogleMapsUrl = string.Empty;
             ImageUrl = string.Empty;
-            FkIdCompany = 0;
+            FkIdDriver = 0;
             Address = string.Empty;
             Reference = string.Empty;
             FkIdDistrict = 0;
             Latitude = null;
             Longitude = null;
         }
-        public Stop(int id, string name, string address, int fk_id_company, int fk_id_district)
+        public Stop(int id, string name, string address, int fk_id_driver, int fk_id_district)
         {
             this.Id = id;
             this.Name = name;
             this.Address = address;
-            this.FkIdCompany = fk_id_company;
+            this.FkIdDriver = fk_id_driver;
             this.FkIdDistrict = fk_id_district;
         }
         public Stop(CreateStopCommand command)
@@ -40,7 +40,7 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
             Name = command.Name;
             GoogleMapsUrl = command.GoogleMapsUrl;
             ImageUrl = command.ImageUrl;
-            FkIdCompany = command.FkIdCompany;
+            FkIdDriver = command.FkIdDriver;
             Address = command.Address;
             Reference = command.Reference;
             FkIdDistrict = command.FkIdDistrict;
@@ -54,7 +54,7 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
             Name = command.Name;
             GoogleMapsUrl = command.GoogleMapsUrl;
             ImageUrl = command.ImageUrl;
-            FkIdCompany = command.FkIdCompany;
+            FkIdDriver = command.FkIdDriver;
             Address = command.Address;
             Reference = command.Reference;
             FkIdDistrict = command.FkIdDistrict;
@@ -68,7 +68,7 @@ namespace Frock_backend.stops.Domain.Model.Aggregates
             Name = "";
             GoogleMapsUrl = "";
             ImageUrl = "";
-            FkIdCompany = 0;
+            FkIdDriver = 0;
             Address = "";
             Reference = "";
             FkIdDistrict = 0;

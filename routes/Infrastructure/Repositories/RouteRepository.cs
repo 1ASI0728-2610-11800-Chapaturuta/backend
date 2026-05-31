@@ -1,4 +1,4 @@
-﻿using Frock_backend.routes.Domain.Model.Aggregates;
+using Frock_backend.routes.Domain.Model.Aggregates;
 using Frock_backend.routes.Domain.Repository;
 using Frock_backend.shared.Domain.Repositories;
 using Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration;
@@ -11,14 +11,14 @@ namespace Frock_backend.routes.Infrastructure.Repositories
 {
     public class RouteRepository(AppDbContext context) : BaseRepository<RouteAggregate>(context), IRouteRepository
     {
-        public Task<List<RouteAggregate>> FindByCompanyId(int companyId)
+        public Task<List<RouteAggregate>> FindByDriverId(int driverId)
         {
             return Context.Set<RouteAggregate>()
-            // Incluimos Stops → Stop para poder filtrar por FkIdCompany
+            // Incluimos Stops → Stop para poder filtrar por FkIdDriver
             .Include(r => r.Stops)
                 .ThenInclude(rs => rs.Stop)
             .Include(r => r.Schedules)
-            .Where(r => r.Stops.Any(rs => rs.Stop.FkIdCompany == companyId))
+            .Where(r => r.Stops.Any(rs => rs.Stop.FkIdDriver == driverId))
             .ToListAsync();
         }
 

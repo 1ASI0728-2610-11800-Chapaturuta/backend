@@ -9,7 +9,6 @@ namespace Frock_backend.IAM.Application.Internal.CommandServices;
 
 public class UserCommandService(
     IUserRepository userRepository,
-    IDriverProfileRepository driverProfileRepository,
     ITokenService tokenService,
     IHashingService hashingService,
     IUnitOfWork unitOfWork)
@@ -85,29 +84,4 @@ public class UserCommandService(
         }
     }
 
-    public async Task<DriverProfile?> Handle(CreateDriverProfileCommand command)
-    {
-        var existingProfile = await driverProfileRepository.FindByUserIdAsync(command.FkIdUser);
-        if (existingProfile != null)
-            throw new Exception($"Driver profile already exists for user {command.FkIdUser}");
-
-        var profile = new DriverProfile(
-            command.FkIdUser,
-            command.LicenseNumber,
-            command.VehiclePlate,
-            command.VehicleModel,
-            command.VehicleYear,
-            command.VehicleCapacity);
-
-        try
-        {
-            await driverProfileRepository.AddAsync(profile);
-            await unitOfWork.CompleteAsync();
-            return profile;
-        }
-        catch (Exception e)
-        {
-            throw new Exception($"An error occurred while creating driver profile: {e.Message}");
-        }
-    }
 }

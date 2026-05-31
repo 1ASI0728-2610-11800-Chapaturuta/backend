@@ -7,6 +7,7 @@ using Frock_backend.routes.Domain.Repository;
 using Frock_backend.routes.Domain.Service;
 using Frock_backend.stops.Domain.Model.Aggregates;
 using Frock_backend.stops.Domain.Repositories;
+using Frock_backend.Subscriptions.Interfaces.ACL;
 using Frock_backend.Trips.Domain.Repositories;
 
 namespace Frock_backend.Discovery.Application.Internal.QueryServices;
@@ -15,10 +16,25 @@ public class DiscoveryQueryService(
     IRouteRepository routeRepository,
     IStopRepository stopRepository,
     ITripRepository tripRepository,
-    IOsrmRoutingService osrmRoutingService) : IDiscoveryQueryService
+    IOsrmRoutingService osrmRoutingService,
+    ISubscriptionsContextFacade subscriptionsFacade) : IDiscoveryQueryService
 {
+    private const string QuotaExhaustedMessage =
+        "Plan Free agotado para Discovery. Suscríbase a Premium para uso ilimitado.";
+
+    private async Task EnsureQuotaAvailableAsync(int userId)
+    {
+        var quota = await subscriptionsFacade.GetRemainingDiscoveryQuotaAsync(userId);
+        if (quota is not null && quota <= 0)
+        {
+            throw new UnauthorizedAccessException(QuotaExhaustedMessage);
+        }
+    }
+
     public async Task<IEnumerable<SearchRouteResult>> Handle(SearchRoutesQuery query)
     {
+        await EnsureQuotaAvailableAsync(query.FkIdUser);
+
         var allRoutes = await routeRepository.ListRoutes();
         var activeRoutes = allRoutes.Where(r => r.IsActive).ToList();
 
@@ -66,43 +82,55 @@ public class DiscoveryQueryService(
             results.Add(new SearchRouteResult(route, distM, durS));
         }
 
+        await subscriptionsFacade.ConsumeDiscoveryQuotaAsync(query.FkIdUser);
         return results;
     }
 
     public async Task<IEnumerable<Stop>> Handle(GetNearbyStopsQuery query, bool useRoadDistance = false)
     {
+        await EnsureQuotaAvailableAsync(query.FkIdUser);
+
         var allStops = await stopRepository.ListAsync();
         var nearby = allStops.Where(s =>
             s.Latitude.HasValue && s.Longitude.HasValue &&
             CalculateDistanceKm(query.Latitude, query.Longitude, s.Latitude.Value, s.Longitude.Value) <= query.RadiusKm
         ).ToList();
 
+        IEnumerable<Stop> ordered;
         if (!useRoadDistance || nearby.Count == 0)
         {
-            return nearby.OrderBy(s =>
+            ordered = nearby.OrderBy(s =>
                 CalculateDistanceKm(query.Latitude, query.Longitude, s.Latitude!.Value, s.Longitude!.Value));
         }
-
-        var source = new Coordinate(query.Latitude, query.Longitude);
-        var destinations = nearby.Select(s => new Coordinate(s.Latitude!.Value, s.Longitude!.Value)).ToList();
-
-        try
+        else
         {
-            var durations = (await osrmRoutingService.TableAsync(source, destinations)).ToList();
-            return nearby
-                .Select((s, i) => (Stop: s, RoadDuration: i < durations.Count ? durations[i] : double.MaxValue))
-                .OrderBy(x => x.RoadDuration)
-                .Select(x => x.Stop);
+            var source = new Coordinate(query.Latitude, query.Longitude);
+            var destinations = nearby.Select(s => new Coordinate(s.Latitude!.Value, s.Longitude!.Value)).ToList();
+
+            try
+            {
+                var durations = (await osrmRoutingService.TableAsync(source, destinations)).ToList();
+                ordered = nearby
+                    .Select((s, i) => (Stop: s, RoadDuration: i < durations.Count ? durations[i] : double.MaxValue))
+                    .OrderBy(x => x.RoadDuration)
+                    .Select(x => x.Stop)
+                    .ToList();
+            }
+            catch
+            {
+                ordered = nearby.OrderBy(s =>
+                    CalculateDistanceKm(query.Latitude, query.Longitude, s.Latitude!.Value, s.Longitude!.Value)).ToList();
+            }
         }
-        catch
-        {
-            return nearby.OrderBy(s =>
-                CalculateDistanceKm(query.Latitude, query.Longitude, s.Latitude!.Value, s.Longitude!.Value));
-        }
+
+        await subscriptionsFacade.ConsumeDiscoveryQuotaAsync(query.FkIdUser);
+        return ordered;
     }
 
     public async Task<IEnumerable<RouteAggregate>> Handle(GetPopularRoutesQuery query)
     {
+        await EnsureQuotaAvailableAsync(query.FkIdUser);
+
         var allTrips = await tripRepository.ListAsync();
         var topRouteIds = allTrips.GroupBy(t => t.FkIdRoute)
             .OrderByDescending(g => g.Count())
@@ -111,11 +139,16 @@ public class DiscoveryQueryService(
             .ToList();
 
         var allRoutes = await routeRepository.ListRoutes();
-        return allRoutes.Where(r => topRouteIds.Contains(r.Id) && r.IsActive);
+        var popular = allRoutes.Where(r => topRouteIds.Contains(r.Id) && r.IsActive).ToList();
+
+        await subscriptionsFacade.ConsumeDiscoveryQuotaAsync(query.FkIdUser);
+        return popular;
     }
 
     public async Task<object> Handle(GetDemandAnalyticsQuery query)
     {
+        await EnsureQuotaAvailableAsync(query.FkIdUser);
+
         var allTrips = await tripRepository.ListAsync();
         var trips = allTrips.AsEnumerable();
 
@@ -134,7 +167,7 @@ public class DiscoveryQueryService(
             .Select(g => new { Day = g.Key.ToString(), Count = g.Count() })
             .OrderBy(x => x.Day).ToList();
 
-        return new
+        var result = new
         {
             districtId = query.DistrictId,
             period = query.Period ?? "all",
@@ -142,6 +175,9 @@ public class DiscoveryQueryService(
             demandByHour,
             demandByDay
         };
+
+        await subscriptionsFacade.ConsumeDiscoveryQuotaAsync(query.FkIdUser);
+        return result;
     }
 
     private static double CalculateDistanceKm(double lat1, double lng1, double lat2, double lng2)

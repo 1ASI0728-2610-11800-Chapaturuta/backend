@@ -1,4 +1,4 @@
-﻿using Swashbuckle.AspNetCore.Annotations;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Frock_backend.stops.Interfaces.REST.Resources
 {
@@ -11,8 +11,8 @@ namespace Frock_backend.stops.Interfaces.REST.Resources
         string GoogleMapsUrl,
         [property: SwaggerSchema("Public URL of the stop's photo image")]
         string ImageUrl,
-        [property: SwaggerSchema("ID of the transport company that owns this stop")]
-        int FkIdCompany,
+        [property: SwaggerSchema("ID of the driver that owns this stop")]
+        int FkIdDriver,
         [property: SwaggerSchema("Street address of the bus stop, e.g. Av. Larco 123")]
         string Address,
         [property: SwaggerSchema("Nearby landmark or additional directions, e.g. Frente al parque")]

@@ -23,7 +23,7 @@ namespace Frock_backend.routes.Interface.REST
         IOsrmRoutingService osrmRoutingService) : ControllerBase
     {
         [HttpPost]
-        [Authorize(Role.TransportManager, Role.Admin)]
+        [Authorize(Role.Driver, Role.Admin)]
         [SwaggerOperation(Summary = "Creates a new route.", OperationId = "Create route")]
         [SwaggerResponse(201, "The route was created", typeof(RouteAggregateResource))]
         [SwaggerResponse(400, "The route was not created")]
@@ -59,13 +59,13 @@ namespace Frock_backend.routes.Interface.REST
             return Ok(resources);
         }
 
-        [HttpGet("company/{FkIdCompany}")]
-        [SwaggerOperation(Summary = "Get Routes By Company Id", OperationId = "GetRoutesByCompanyId")]
+        [HttpGet("driver/{FkIdDriver}")]
+        [SwaggerOperation(Summary = "Get Routes By Driver Id", OperationId = "GetRoutesByDriverId")]
         [SwaggerResponse(200, "The routes were retrieved", typeof(IEnumerable<RouteAggregateResource>))]
         [SwaggerResponse(404, "No routes found")]
-        public async Task<ActionResult<IEnumerable<RouteAggregateResource>>> GetAllRoutes(int FkIdCompany)
+        public async Task<ActionResult<IEnumerable<RouteAggregateResource>>> GetAllRoutesByDriver(int FkIdDriver)
         {
-            var routes = await routeQueryService.Handle(new GetAllRoutesByFkCompanyIdQuery(FkIdCompany));
+            var routes = await routeQueryService.Handle(new GetAllRoutesByFkDriverIdQuery(FkIdDriver));
             if (routes == null || !routes.Any()) return NotFound("No routes found.");
             var resources = routes.Select(RouteAggregateResourceFromResourceAssembler.ToResourceFromEntity).ToList();
             return Ok(resources);
@@ -95,7 +95,7 @@ namespace Frock_backend.routes.Interface.REST
         }
 
         [HttpPut("{id}")]
-        [Authorize(Role.TransportManager, Role.Admin)]
+        [Authorize(Role.Driver, Role.Admin)]
         [SwaggerOperation(Summary = "Update Route", OperationId = "UpdateRoute")]
         [SwaggerResponse(200, "The route was updated", typeof(RouteAggregateResource))]
         [SwaggerResponse(401, "Unauthorized - token missing or invalid")]
@@ -119,7 +119,7 @@ namespace Frock_backend.routes.Interface.REST
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Role.TransportManager, Role.Admin)]
+        [Authorize(Role.Driver, Role.Admin)]
         [SwaggerOperation(Summary = "Delete Route", OperationId = "DeleteRoute")]
         [SwaggerResponse(204, "The route was deleted")]
         [SwaggerResponse(401, "Unauthorized - token missing or invalid")]
@@ -132,7 +132,7 @@ namespace Frock_backend.routes.Interface.REST
         }
 
         [HttpPatch("{id}/toggle-availability")]
-        [Authorize(Role.TransportManager, Role.Admin)]
+        [Authorize(Role.Driver, Role.Admin)]
         [SwaggerOperation(Summary = "Toggle Route Availability", OperationId = "ToggleRouteAvailability")]
         [SwaggerResponse(200, "The route availability was toggled", typeof(RouteAggregateResource))]
         [SwaggerResponse(401, "Unauthorized - token missing or invalid")]

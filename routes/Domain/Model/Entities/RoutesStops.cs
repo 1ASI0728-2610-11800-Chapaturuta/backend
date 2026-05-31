@@ -13,9 +13,9 @@ namespace Frock_backend.routes.Domain.Model.Entities
         {
             this.FkStopId = FkStopId;
         }
-        public RoutesStops(int stopId, string name, string address, int fkCompanyId, int fkDistrictId)
+        public RoutesStops(int stopId, string name, string address, int fkDriverId, int fkDistrictId)
         {
-            this.Stop = new Stop(stopId, name, address, fkCompanyId, fkDistrictId);
+            this.Stop = new Stop(stopId, name, address, fkDriverId, fkDistrictId);
         }
     }
 }

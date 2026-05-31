@@ -14,5 +14,7 @@ public record CreateTripResource(
     [property: SwaggerSchema("ID of the stop where the passenger exits the vehicle")]
     int FkIdDestinationStop,
     [property: SwaggerSchema("Fare paid for this trip in Peruvian soles (S/.). Defaults to route price if not provided")]
-    double? Price
+    decimal? Price,
+    [property: SwaggerSchema("Initial number of available seats on this trip (vehicle capacity available for reservations)")]
+    int AvailableSeats
 );

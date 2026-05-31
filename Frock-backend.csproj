@@ -49,4 +49,11 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Frock-backend.Tests/**" />
+    <Content Remove="Frock-backend.Tests/**" />
+    <None Remove="Frock-backend.Tests/**" />
+    <EmbeddedResource Remove="Frock-backend.Tests/**" />
+  </ItemGroup>
 </Project>

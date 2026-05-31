@@ -5,7 +5,7 @@ using Frock_backend.IAM.Domain.Services;
 
 namespace Frock_backend.IAM.Application.Internal.QueryServices;
 
-public class UserQueryService(IUserRepository userRepository, IDriverProfileRepository driverProfileRepository) : IUserQueryService
+public class UserQueryService(IUserRepository userRepository) : IUserQueryService
 {
     public async Task<User?> Handle(GetUserByIdQuery query)
     {
@@ -25,10 +25,5 @@ public class UserQueryService(IUserRepository userRepository, IDriverProfileRepo
     public async Task<User?> Handle(GetUserByEmailQuery query)
     {
         return await userRepository.FindByEmailAsync(query.Email);
-    }
-
-    public async Task<DriverProfile?> Handle(GetDriverProfileByUserIdQuery query)
-    {
-        return await driverProfileRepository.FindByUserIdAsync(query.UserId);
     }
 }

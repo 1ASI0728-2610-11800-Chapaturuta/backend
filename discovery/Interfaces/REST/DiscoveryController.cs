@@ -18,62 +18,107 @@ public class DiscoveryController(IDiscoveryQueryService queryService) : Controll
     [HttpGet("search")]
     [SwaggerOperation(
         Summary = "Search routes by origin/destination",
-        Description = "Returns matching routes. When both origin and destination are provided, includes OSRM estimated distance and duration for each match.",
+        Description = "Returns matching routes. When both origin and destination are provided, includes OSRM estimated distance and duration for each match. Requires userId for Discovery quota enforcement (Plan Free is limited; Premium is unlimited).",
         OperationId = "SearchRoutes")]
     [SwaggerResponse(200, "Matching routes with optional OSRM estimates")]
+    [SwaggerResponse(403, "Plan Free Discovery quota exhausted")]
     public async Task<IActionResult> SearchRoutes(
+        [FromQuery, SwaggerParameter("ID of the user whose Discovery quota will be consumed", Required = true)] int userId,
         [FromQuery] string? origin,
         [FromQuery] string? destination,
         [FromQuery] string? date)
     {
-        var query = new SearchRoutesQuery(origin, destination, date);
-        var results = await queryService.Handle(query);
-        var resources = results.Select(r => new
+        try
         {
-            route = RouteAggregateResourceFromResourceAssembler.ToResourceFromEntity(r.Route),
-            estimatedDistanceMeters = r.EstimatedDistanceMeters,
-            estimatedDurationSeconds = r.EstimatedDurationSeconds
-        });
-        return Ok(resources);
+            var query = new SearchRoutesQuery(origin, destination, date, userId);
+            var results = await queryService.Handle(query);
+            var resources = results.Select(r => new
+            {
+                route = RouteAggregateResourceFromResourceAssembler.ToResourceFromEntity(r.Route),
+                estimatedDistanceMeters = r.EstimatedDistanceMeters,
+                estimatedDurationSeconds = r.EstimatedDurationSeconds
+            });
+            return Ok(resources);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
     }
 
     [HttpGet("nearby")]
     [SwaggerOperation(
         Summary = "Find nearby stops by coordinates",
-        Description = "Returns stops within radius. Add ?useRoadDistance=true to sort by road distance via OSRM instead of straight-line Haversine.",
+        Description = "Returns stops within radius. Add ?useRoadDistance=true to sort by road distance via OSRM instead of straight-line Haversine. Requires userId for Discovery quota enforcement (Plan Free is limited; Premium is unlimited).",
         OperationId = "GetNearbyStops")]
     [SwaggerResponse(200, "Nearby stops ordered by distance", typeof(IEnumerable<NearbyStopResource>))]
+    [SwaggerResponse(403, "Plan Free Discovery quota exhausted")]
     public async Task<IActionResult> GetNearbyStops(
+        [FromQuery, SwaggerParameter("ID of the user whose Discovery quota will be consumed", Required = true)] int userId,
         [FromQuery] double lat,
         [FromQuery] double lng,
         [FromQuery] double radius = 2.0,
         [FromQuery] bool useRoadDistance = false)
     {
-        var query = new GetNearbyStopsQuery(lat, lng, radius);
-        var stops = await queryService.Handle(query, useRoadDistance);
-        var resources = stops.Select(s => new NearbyStopResource(s.Id, s.Name, s.Address, s.Latitude, s.Longitude, s.FkIdCompany, s.FkIdDistrict));
-        return Ok(resources);
+        try
+        {
+            var query = new GetNearbyStopsQuery(lat, lng, userId, radius);
+            var stops = await queryService.Handle(query, useRoadDistance);
+            var resources = stops.Select(s => new NearbyStopResource(s.Id, s.Name, s.Address, s.Latitude, s.Longitude, s.FkIdDriver, s.FkIdDistrict));
+            return Ok(resources);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
     }
 
     [HttpGet("popular")]
-    [SwaggerOperation(Summary = "Get popular routes based on trip count", OperationId = "GetPopularRoutes")]
+    [SwaggerOperation(
+        Summary = "Get popular routes based on trip count",
+        Description = "Requires userId for Discovery quota enforcement (Plan Free is limited; Premium is unlimited).",
+        OperationId = "GetPopularRoutes")]
     [SwaggerResponse(200, "Popular routes", typeof(IEnumerable<RouteAggregateResource>))]
-    public async Task<IActionResult> GetPopularRoutes([FromQuery] int limit = 10)
+    [SwaggerResponse(403, "Plan Free Discovery quota exhausted")]
+    public async Task<IActionResult> GetPopularRoutes(
+        [FromQuery, SwaggerParameter("ID of the user whose Discovery quota will be consumed", Required = true)] int userId,
+        [FromQuery] int limit = 10)
     {
-        var query = new GetPopularRoutesQuery(limit);
-        var routes = await queryService.Handle(query);
-        var resources = routes.Select(RouteAggregateResourceFromResourceAssembler.ToResourceFromEntity);
-        return Ok(resources);
+        try
+        {
+            var query = new GetPopularRoutesQuery(userId, limit);
+            var routes = await queryService.Handle(query);
+            var resources = routes.Select(RouteAggregateResourceFromResourceAssembler.ToResourceFromEntity);
+            return Ok(resources);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
     }
 
     [HttpGet("analytics/demand")]
-    [SwaggerOperation(Summary = "Get demand analytics by district and period", OperationId = "GetDemandAnalytics")]
+    [SwaggerOperation(
+        Summary = "Get demand analytics by district and period",
+        Description = "Requires userId for Discovery quota enforcement (Plan Free is limited; Premium is unlimited).",
+        OperationId = "GetDemandAnalytics")]
     [SwaggerResponse(200, "Demand analytics grouped by hour and day of week")]
-    public async Task<IActionResult> GetDemandAnalytics([FromQuery] int? districtId, [FromQuery] string? period)
+    [SwaggerResponse(403, "Plan Free Discovery quota exhausted")]
+    public async Task<IActionResult> GetDemandAnalytics(
+        [FromQuery, SwaggerParameter("ID of the user whose Discovery quota will be consumed", Required = true)] int userId,
+        [FromQuery] int? districtId,
+        [FromQuery] string? period)
     {
-        var query = new GetDemandAnalyticsQuery(districtId, period);
-        var result = await queryService.Handle(query);
-        return Ok(result);
+        try
+        {
+            var query = new GetDemandAnalyticsQuery(districtId, period, userId);
+            var result = await queryService.Handle(query);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
     }
 
     // ── FASE 2 STUBS ───────────────────────────────────────────────────────────

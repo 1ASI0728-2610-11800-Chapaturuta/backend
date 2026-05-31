@@ -74,4 +74,18 @@ public class IamContextFacade(IUserCommandService userCommandService, IUserQuery
         var result = await userQueryService.Handle(getUserByIdQuery);
         return result?.Email ?? string.Empty;
     }
+
+    /**
+     * <summary>
+     *     Fetch the role name given a user ID.
+     * </summary>
+     * <param name="userId">The ID of the user.</param>
+     * <returns>The role name (e.g., "Driver", "Traveller", "Admin"), or null if the user was not found.</returns>
+     */
+    public async Task<string?> FetchUserRoleByIdAsync(int userId)
+    {
+        var getUserByIdQuery = new GetUserByIdQuery(userId);
+        var result = await userQueryService.Handle(getUserByIdQuery);
+        return result?.Role.ToString();
+    }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
 namespace Frock_backend.stops.Interfaces.REST.Resources
@@ -7,17 +7,17 @@ namespace Frock_backend.stops.Interfaces.REST.Resources
     {
         [Required]
         public string Name { get; set; } = string.Empty;
-        
+
         public string? GoogleMapsUrl { get; set; }
-        
+
         public IFormFile? ImageFile { get; set; }
 
         [Required]
-        public int FkIdCompany { get; set; }
-        
+        public int FkIdDriver { get; set; }
+
         [Required]
         public string Address { get; set; } = string.Empty;
-        
+
         [Required]
         public string Reference { get; set; } = string.Empty;
 

@@ -35,7 +35,7 @@ namespace Frock_backend.stops.Interfaces.REST
         /// A response as an action result containing the created stop, or bad request if the stop was not created.
         /// </returns>
         [HttpPost]
-        [Authorize(Role.TransportManager, Role.Admin)]
+        [Authorize(Role.Driver, Role.Admin)]
         [Consumes("multipart/form-data")]
         [SwaggerOperation(
             Summary = "Creates a new stop with optional image upload.",
@@ -68,7 +68,7 @@ namespace Frock_backend.stops.Interfaces.REST
                     resource.Name,
                     resource.GoogleMapsUrl ?? string.Empty,
                     imageUrl,
-                    resource.FkIdCompany,
+                    resource.FkIdDriver,
                     resource.Address,
                     resource.Reference,
                     resource.FkIdDistrict,
@@ -131,16 +131,16 @@ namespace Frock_backend.stops.Interfaces.REST
             return Ok(resources);
         }
 
-        [HttpGet("company/{FkIdCompany}")]
+        [HttpGet("driver/{FkIdDriver}")]
         [SwaggerOperation(
-       Summary = "Gets all stops by FkIdCompany",
-       Description = "Gets a stop for a given company identifier",
-       OperationId = "GetStopsByFkIdCompany")]
+       Summary = "Gets all stops by FkIdDriver",
+       Description = "Gets a stop for a given driver identifier",
+       OperationId = "GetStopsByFkIdDriver")]
         [SwaggerResponse(200, "The stops were found", typeof(IEnumerable<StopResource>))]
-        public async Task<ActionResult> GetStopsByFkIdCompany(int FkIdCompany)
+        public async Task<ActionResult> GetStopsByFkIdDriver(int FkIdDriver)
         {
-            var getAllStopsByFkIdCompanyQuery = new GetAllStopsByFkIdCompanyQuery(FkIdCompany);
-            var result = await stopQueryService.Handle(getAllStopsByFkIdCompanyQuery);
+            var getAllStopsByFkIdDriverQuery = new GetAllStopsByFkIdDriverQuery(FkIdDriver);
+            var result = await stopQueryService.Handle(getAllStopsByFkIdDriverQuery);
 
             if (result == null)
             {
@@ -196,18 +196,18 @@ namespace Frock_backend.stops.Interfaces.REST
             return Ok(resource);
         }
 
-        //get by name and company
-        [HttpGet("company/{FkIdCompany}/name/{Name}")]
+        //get by name and driver
+        [HttpGet("driver/{FkIdDriver}/name/{Name}")]
         [SwaggerOperation(
-            Summary = "Gets a stop by Company ID and name",
-            Description = "Gets a specific stop for a given Company ID and stop name",
-            OperationId = "GetStopByNameAndFkIdCompany")]
+            Summary = "Gets a stop by Driver ID and name",
+            Description = "Gets a specific stop for a given Driver ID and stop name",
+            OperationId = "GetStopByNameAndFkIdDriver")]
         [SwaggerResponse(StatusCodes.Status200OK, "The stop was found", typeof(StopResource))]
-        [SwaggerResponse(StatusCodes.Status404NotFound, "The stop was not found for the given Company and name")]
-        public async Task<ActionResult> GetStopByNameAndFkIdCompany(int FkIdCompany, string Name)
+        [SwaggerResponse(StatusCodes.Status404NotFound, "The stop was not found for the given Driver and name")]
+        public async Task<ActionResult> GetStopByNameAndFkIdDriver(int FkIdDriver, string Name)
         {
-            var getStopByNameAndCompanyQuery = new GetStopByNameAndFkIdCompanyQuery(Name, FkIdCompany);
-            var result = await stopQueryService.Handle(getStopByNameAndCompanyQuery);
+            var getStopByNameAndDriverQuery = new GetStopByNameAndFkIdDriverQuery(Name, FkIdDriver);
+            var result = await stopQueryService.Handle(getStopByNameAndDriverQuery);
             if (result is null)
             {
                 return NotFound();
@@ -219,7 +219,7 @@ namespace Frock_backend.stops.Interfaces.REST
 
 
         [HttpDelete("{id}")]
-        [Authorize(Role.TransportManager, Role.Admin)]
+        [Authorize(Role.Driver, Role.Admin)]
         [SwaggerOperation(
             Summary = "Deletes a stop by ID",
             Description = "Deletes a stop for a given stop identifier",
@@ -243,7 +243,7 @@ namespace Frock_backend.stops.Interfaces.REST
         }
 
         [HttpPut("{id}")]
-        [Authorize(Role.TransportManager, Role.Admin)]
+        [Authorize(Role.Driver, Role.Admin)]
         [SwaggerOperation(
             Summary = "Updates an existing stop by ID.",
             Description = "Updates an existing stop with the provided data. The ID in the URL must match the ID in the request body.",

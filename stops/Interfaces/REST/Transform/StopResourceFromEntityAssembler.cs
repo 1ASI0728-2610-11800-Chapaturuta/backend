@@ -1,4 +1,4 @@
-﻿using Frock_backend.stops.Domain.Model.Aggregates;
+using Frock_backend.stops.Domain.Model.Aggregates;
 using Frock_backend.stops.Interfaces.REST.Resources;
 
 namespace Frock_backend.stops.Interfaces.REST.Transform
@@ -6,7 +6,7 @@ namespace Frock_backend.stops.Interfaces.REST.Transform
     public static class StopResourceFromEntityAssembler
     {
         /// <summary>
-        /// Assembles a StopResource from a Stop. 
+        /// Assembles a StopResource from a Stop.
         /// </summary>
         /// <param name="entity">The Stop entity</param>
         /// <returns>
@@ -18,7 +18,7 @@ namespace Frock_backend.stops.Interfaces.REST.Transform
                 entity.Name,
                 entity.GoogleMapsUrl,
                 entity.ImageUrl,
-                entity.FkIdCompany,
+                entity.FkIdDriver,
                 entity.Address,
                 entity.Reference,
                 entity.FkIdDistrict,

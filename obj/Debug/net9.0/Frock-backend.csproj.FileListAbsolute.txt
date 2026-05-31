@@ -1416,3 +1416,6 @@ h:\8vo ciclo\UIni\Emergentes\Codigo\backend\bin_verify\runtimes\win-x64\native\k
 h:\8vo ciclo\UIni\Emergentes\Codigo\backend\bin_verify\runtimes\win-x64\native\krbcc64.dll
 h:\8vo ciclo\UIni\Emergentes\Codigo\backend\bin_verify\runtimes\win\lib\net6.0\System.Runtime.Caching.dll
 h:\8vo ciclo\UIni\Emergentes\Codigo\backend\bin_verify\runtimes\win\lib\net8.0\System.Windows.Extensions.dll
+f:\Ciclo8\Arqui\TrabajoFinal\backend\bin\Debug\net9.0\scripts\package-lock.json
+f:\Ciclo8\Arqui\TrabajoFinal\backend\bin\Debug\net9.0\scripts\package.json
+f:\Ciclo8\Arqui\TrabajoFinal\backend\bin\Debug\net9.0\stops\Infrastructure\Seeding\geo-data.json

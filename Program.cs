@@ -27,12 +27,37 @@ using Frock_backend.IAM.Infrastructure.Tokens.JWT.Services;
 using Frock_backend.IAM.Interfaces.ACL;
 using Frock_backend.IAM.Interfaces.ACL.Services;
 
-// COMPANY
-using Frock_backend.transport_Company.Application.Internal.CommandServices;
-using Frock_backend.transport_Company.Application.Internal.QueryServices;
-using Frock_backend.transport_Company.Domain.Repositories;
-using Frock_backend.transport_Company.Domain.Services;
-using Frock_backend.transport_Company.Infrastructure.Repositories;
+// DRIVER BC (wired by F4)
+using Frock_backend.Driver.Domain.Repositories;
+using Frock_backend.Driver.Domain.Services;
+using Frock_backend.Driver.Application.Internal.CommandServices;
+using Frock_backend.Driver.Application.Internal.QueryServices;
+using Frock_backend.Driver.Infrastructure.Repositories;
+using Frock_backend.Driver.Interfaces.ACL;
+using Frock_backend.Driver.Interfaces.ACL.Services;
+
+// PAYMENTS BC (wired by F4)
+using Frock_backend.Payments.Domain.Repositories;
+using Frock_backend.Payments.Domain.Services;
+using Frock_backend.Payments.Domain.Services.Gateways;
+using Frock_backend.Payments.Application.Internal.CommandServices;
+using Frock_backend.Payments.Application.Internal.QueryServices;
+using Frock_backend.Payments.Infrastructure.Repositories;
+using Frock_backend.Payments.Infrastructure.ExternalServices.Gateways;
+using Frock_backend.Payments.Infrastructure.ExternalServices.Gateways.PayU;
+using Frock_backend.Payments.Infrastructure.Factories;
+using Frock_backend.Payments.Interfaces.ACL;
+using Frock_backend.Payments.Interfaces.ACL.Services;
+
+// SUBSCRIPTIONS BC (wired by F4)
+using Frock_backend.Subscriptions.Domain.Repositories;
+using Frock_backend.Subscriptions.Domain.Services;
+using Frock_backend.Subscriptions.Application.Internal.CommandServices;
+using Frock_backend.Subscriptions.Application.Internal.QueryServices;
+using Frock_backend.Subscriptions.Infrastructure.Repositories;
+using Frock_backend.Subscriptions.Infrastructure.Seeding;
+using Frock_backend.Subscriptions.Interfaces.ACL;
+using Frock_backend.Subscriptions.Interfaces.ACL.Services;
 
 // STOPS
 using Frock_backend.stops.Application.Internal.CommandServices;
@@ -198,7 +223,6 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Progr
 // ============================================================
 builder.Services.Configure<TokenSettings>(builder.Configuration.GetSection("TokenSettings"));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IDriverProfileRepository, DriverProfileRepository>();
 builder.Services.AddScoped<IUserCommandService, UserCommandService>();
 builder.Services.AddScoped<IUserQueryService, UserQueryService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -206,11 +230,48 @@ builder.Services.AddScoped<IHashingService, HashingService>();
 builder.Services.AddScoped<IIamContextFacade, IamContextFacade>();
 
 // ============================================================
-// Dependency Injection — Company
+// Dependency Injection — Driver BC (wired by F4)
 // ============================================================
-builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
-builder.Services.AddScoped<ICompanyCommandService, CompanyCommandService>();
-builder.Services.AddScoped<ICompanyQueryService, CompanyQueryService>();
+builder.Services.AddScoped<IDriverRepository, DriverRepository>();
+builder.Services.AddScoped<ITariffRepository, TariffRepository>();
+builder.Services.AddScoped<IRouteDurationRepository, RouteDurationRepository>();
+builder.Services.AddScoped<IDriverCommandService, DriverCommandService>();
+builder.Services.AddScoped<ITariffCommandService, TariffCommandService>();
+builder.Services.AddScoped<IDriverQueryService, DriverQueryService>();
+builder.Services.AddScoped<ITariffQueryService, TariffQueryService>();
+builder.Services.AddScoped<IDriverContextFacade, DriverContextFacade>();
+
+// ============================================================
+// Dependency Injection — Payments BC (wired by F4)
+// ============================================================
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IRefundRepository, RefundRepository>();
+builder.Services.AddScoped<IPaymentCommandService, PaymentCommandService>();
+builder.Services.AddScoped<IPaymentQueryService, PaymentQueryService>();
+builder.Services.AddScoped<IRefundCommandService, RefundCommandService>();
+builder.Services.AddScoped<IRefundQueryService, RefundQueryService>();
+builder.Services.AddScoped<IYapePaymentGateway, YapePaymentGateway>();
+builder.Services.AddScoped<IPlinPaymentGateway, PlinPaymentGateway>();
+
+// PayU backs the Card payment method
+builder.Services.Configure<PayUSettings>(builder.Configuration.GetSection("PayU"));
+builder.Services.AddHttpClient<IPayUPaymentGateway, PayUPaymentGateway>();
+builder.Services.AddScoped<ICardPaymentGateway>(sp => sp.GetRequiredService<IPayUPaymentGateway>());
+
+builder.Services.AddScoped<ICashPaymentHandler, CashPaymentHandler>();
+builder.Services.AddScoped<PaymentGatewayFactory>();
+builder.Services.AddScoped<IPaymentsContextFacade, PaymentsContextFacade>();
+
+// ============================================================
+// Dependency Injection — Subscriptions BC (wired by F4)
+// ============================================================
+builder.Services.AddScoped<IPlanRepository, PlanRepository>();
+builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+builder.Services.AddScoped<IPlanCommandService, PlanCommandService>();
+builder.Services.AddScoped<IPlanQueryService, PlanQueryService>();
+builder.Services.AddScoped<ISubscriptionCommandService, SubscriptionCommandService>();
+builder.Services.AddScoped<ISubscriptionQueryService, SubscriptionQueryService>();
+builder.Services.AddScoped<ISubscriptionsContextFacade, SubscriptionsContextFacade>();
 
 // ============================================================
 // Dependency Injection — Geographic
@@ -252,6 +313,9 @@ builder.Services.AddScoped<IRatingQueryService, RatingQueryService>();
 builder.Services.AddScoped<ITripRepository, TripRepository>();
 builder.Services.AddScoped<ITripCommandService, TripCommandService>();
 builder.Services.AddScoped<ITripQueryService, TripQueryService>();
+builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+builder.Services.AddScoped<IReservationCommandService, ReservationCommandService>();
+builder.Services.AddScoped<IReservationQueryService, ReservationQueryService>();
 
 // ============================================================
 // Dependency Injection — Collections
@@ -341,6 +405,15 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         Log.Error(ex, "Error during geographic data seeding");
+    }
+
+    try
+    {
+        await PlansSeeder.SeedAsync(context);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error during Plans seeding");
     }
 }
 

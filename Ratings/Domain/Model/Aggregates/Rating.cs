@@ -4,6 +4,7 @@ public class Rating
 {
     public int Id { get; }
     public int FkIdUser { get; set; }
+    /// <summary>FK al aggregate Driver del BC Driver.</summary>
     public int FkIdDriver { get; set; }
     public int FkIdTrip { get; set; }
     public int Score { get; set; }

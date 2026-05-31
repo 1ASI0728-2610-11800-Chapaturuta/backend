@@ -27,7 +27,7 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
     {
         try
         {
-            var command = new CreateTripCommand(resource.FkIdUser, resource.FkIdDriver, resource.FkIdRoute, resource.FkIdOriginStop, resource.FkIdDestinationStop, resource.Price);
+            var command = new CreateTripCommand(resource.FkIdUser, resource.FkIdDriver, resource.FkIdRoute, resource.FkIdOriginStop, resource.FkIdDestinationStop, resource.Price, resource.AvailableSeats);
             var trip = await commandService.Handle(command);
             if (trip == null) return BadRequest("Could not create trip");
             var tripResource = TripResourceFromEntityAssembler.ToResourceFromEntity(trip);

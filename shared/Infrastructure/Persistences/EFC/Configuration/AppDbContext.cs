@@ -4,12 +4,21 @@ using Frock_backend.routes.Domain.Model.Entities;
 using Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration.Extensions;
 using Frock_backend.stops.Domain.Model.Aggregates;
 using Frock_backend.stops.Domain.Model.Aggregates.Geographic;
-using Frock_backend.transport_Company.Domain.Model.Aggregates;
 using Frock_backend.IAM.Domain.Model.Aggregates;
 using Frock_backend.Ratings.Domain.Model.Aggregates;
 using Frock_backend.Trips.Domain.Model.Aggregates;
 using Frock_backend.Collections.Domain.Model.Aggregates;
 using Frock_backend.Notifications.Domain.Model.Aggregates;
+
+// New BCs — wired in by F4 agent
+using DriverAggregate = Frock_backend.Driver.Domain.Model.Aggregates.Driver;
+using Frock_backend.Driver.Domain.Model.Aggregates;
+using Frock_backend.Driver.Infrastructure.Persistence.EFC.Configuration;
+using Frock_backend.Payments.Domain.Model.Aggregates;
+using Frock_backend.Payments.Infrastructure.Persistence.EFC.Configuration;
+using Frock_backend.Subscriptions.Domain.Model.Aggregates;
+using Frock_backend.Subscriptions.Infrastructure.Persistence.EFC.Configuration;
+using Frock_backend.Trips.Infrastructure.Persistence.EFC.Configuration;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +27,16 @@ namespace Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration
 {
     public class AppDbContext(DbContextOptions options) : DbContext(options)
     {
+        // ── New BC DbSets (wired by F4) ────────────────────────────────────────
+        public DbSet<DriverAggregate> Drivers { get; set; } = null!;
+        public DbSet<Tariff> Tariffs { get; set; } = null!;
+        public DbSet<RouteDuration> RouteDurations { get; set; } = null!;
+        public DbSet<Reservation> Reservations { get; set; } = null!;
+        public DbSet<Plan> Plans { get; set; } = null!;
+        public DbSet<Subscription> Subscriptions { get; set; } = null!;
+        public DbSet<Payment> Payments { get; set; } = null!;
+        public DbSet<Refund> Refunds { get; set; } = null!;
+
         protected override void OnConfiguring(DbContextOptionsBuilder builder)
         {
             builder.AddCreatedUpdatedInterceptor();
@@ -34,31 +53,6 @@ namespace Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration
             builder.Entity<User>().Property(u => u.Username).IsRequired();
             builder.Entity<User>().Property(u => u.PasswordHash).IsRequired();
             builder.Entity<User>().Property(u => u.Role).HasConversion<string>().IsRequired();
-
-            // DRIVER PROFILE
-            builder.Entity<DriverProfile>().HasKey(dp => dp.Id);
-            builder.Entity<DriverProfile>().Property(dp => dp.Id).IsRequired().ValueGeneratedOnAdd();
-            builder.Entity<DriverProfile>().Property(dp => dp.LicenseNumber).IsRequired();
-            builder.Entity<DriverProfile>().Property(dp => dp.VehiclePlate).IsRequired();
-            builder.Entity<DriverProfile>().Property(dp => dp.VehicleModel).IsRequired();
-            builder.Entity<DriverProfile>()
-                .HasOne<User>()
-                .WithOne()
-                .HasForeignKey<DriverProfile>(dp => dp.FkIdUser)
-                .IsRequired()
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // COMPANY
-            builder.Entity<Company>().HasKey(f => f.Id);
-            builder.Entity<Company>().Property(f => f.Id).IsRequired().ValueGeneratedOnAdd();
-            builder.Entity<Company>().Property(f => f.Name).IsRequired();
-            builder.Entity<Company>().Property(f => f.LogoUrl).IsRequired();
-            builder.Entity<Company>()
-                .HasOne<User>()
-                .WithOne()
-                .HasForeignKey<Company>(c => c.FkIdUser)
-                .IsRequired()
-                .OnDelete(DeleteBehavior.Restrict);
 
             // REGION
             builder.Entity<Region>().HasKey(f => f.Id);
@@ -98,9 +92,9 @@ namespace Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration
             builder.Entity<Stop>().Property(f => f.Latitude);
             builder.Entity<Stop>().Property(f => f.Longitude);
             builder.Entity<Stop>()
-                .HasOne<Company>()
+                .HasOne<DriverAggregate>()
                 .WithMany()
-                .HasForeignKey(l => l.FkIdCompany)
+                .HasForeignKey(l => l.FkIdDriver)
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Restrict);
             builder.Entity<Stop>()
@@ -172,6 +166,8 @@ namespace Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration
                 b.Property(t => t.Id).IsRequired().ValueGeneratedOnAdd();
                 b.Property(t => t.StartTime).IsRequired();
                 b.Property(t => t.Status).HasMaxLength(20).HasDefaultValue("Pending");
+                b.Property(t => t.Price).HasColumnType("decimal(12,2)");
+                b.Property(t => t.AvailableSeats).HasDefaultValue(0);
                 b.HasOne<User>().WithMany().HasForeignKey(t => t.FkIdUser).OnDelete(DeleteBehavior.Restrict);
                 b.HasOne<User>().WithMany().HasForeignKey(t => t.FkIdDriver).OnDelete(DeleteBehavior.Restrict);
                 b.HasOne<RouteAggregate>().WithMany().HasForeignKey(t => t.FkIdRoute).OnDelete(DeleteBehavior.Restrict);
@@ -214,6 +210,16 @@ namespace Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration
                 b.Property(n => n.CreatedAt).IsRequired();
                 b.HasOne<User>().WithMany().HasForeignKey(n => n.FkIdUser).OnDelete(DeleteBehavior.Cascade);
             });
+
+            // ── New BC entity configurations (wired by F4) ─────────────────────
+            builder.ApplyConfiguration(new DriverEntityConfiguration());
+            builder.ApplyConfiguration(new TariffEntityConfiguration());
+            builder.ApplyConfiguration(new RouteDurationEntityConfiguration());
+            builder.ApplyConfiguration(new ReservationEntityConfiguration());
+            builder.ApplyConfiguration(new PlanEntityConfiguration());
+            builder.ApplyConfiguration(new SubscriptionEntityConfiguration());
+            builder.ApplyConfiguration(new PaymentEntityConfiguration());
+            builder.ApplyConfiguration(new RefundEntityConfiguration());
 
             builder.UseSnakeCaseNamingConvention();
         }
