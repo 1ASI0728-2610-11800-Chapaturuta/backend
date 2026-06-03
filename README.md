@@ -85,7 +85,7 @@ El proyecto está organizado para que un compañero solo tenga que hacer **`git 
 
 ### Cómo funciona el setup
 
-1. **Routing por defecto = demo público.** El backend apunta a `https://router.project-osrm.org` (keyless). No se descarga PBF ni se levanta OSRM local. Trade-off: fair-use ~1 req/seg y sin SLA → suficiente para dev/demo (ver [OSRM en producción](#osrm-en-producción-cloud)).
+1. **Routing por defecto = demo público.** El backend apunta a `https://router.project-osrm.org` (keyless). No se descarga PBF ni se levanta OSRM local. Trade-off: fair-use ~1 req/seg y sin SLA → suficiente para dev/demo (ver [OSRM: demo vs self-hosted](#osrm-demo-público-default-vs-self-hosted)).
 2. **OSRM self-hosted local (opcional).** Solo si quieres routing sin depender del demo: `pbf-downloader` (perfil `setup`) descarga `peru-latest.osm.pbf` desde Geofabrik (~240 MB); `osrm-preprocess` corre `osrm-extract` → `osrm-partition` → `osrm-customize` (10–30 min); luego `osrm-backend` (perfil `osrm-local`) sirve el routing. Recuerda apuntar `Osrm__BaseUrl` de vuelta a `http://osrm-backend:5000`.
 3. **`backend`** **no** depende de OSRM en `depends_on`. Si OSRM (demo o local) no está disponible, las features de routing (preview, ETA, geometry) devuelven errores controlados y el resto de endpoints CRUD funcionan igual.
 4. **Datos geográficos** (regiones / provincias / distritos) se cargan al arrancar desde un snapshot OSM embebido en el repo (`stops/Infrastructure/Seeding/geo-data.json`, 1694 distritos). Generado offline con `backend/scripts/extract-geo.mjs` a partir del PBF + GDAL. Si el API externa configurada en `GeoApi:BaseUrl` está disponible, se usa esa; si falla (timeout, 502, etc.), cae automáticamente al snapshot local. **Cero acción manual**.
@@ -165,7 +165,7 @@ backend/
 docker compose up -d --build      # uso normal. Routing vía demo público de OSRM.
 ```
 
-> **Routing por defecto = demo público** `https://router.project-osrm.org` (dev y cloud). El OSRM local es opcional vía perfil `osrm-local` (ver [OSRM en producción](#osrm-en-producción-cloud)).
+> **Routing por defecto = demo público** `https://router.project-osrm.org` (dev y cloud). El OSRM local es opcional vía perfil `osrm-local` (ver [OSRM: demo vs self-hosted](#osrm-demo-público-default-vs-self-hosted)).
 
 Esto levanta:
 - **MySQL 8.0** en puerto `3307`
@@ -337,16 +337,14 @@ Swagger UI: http://localhost:5027/swagger/index.html
 | `Osrm__Profile` | Perfil de routing OSRM | `driving` |
 | `OsmTiles__PublicUrl` | URL de tiles expuesta al frontend | `http://localhost:8088/tile/{z}/{x}/{y}.png` |
 
-## OSRM en producción (cloud)
+## OSRM: demo público (default) vs self-hosted
 
-En el deploy de Render **no se levanta OSRM** (es costoso en RAM: ~0.7–1.5 GB residente + 2–4 GB en el preprocesado). En su lugar, `render.yaml` apunta `Osrm__BaseUrl` al **servidor demo público** `https://router.project-osrm.org`:
+Por defecto **dev y cloud usan el mismo servidor demo público** `https://router.project-osrm.org`, así que nadie necesita descargar el PBF ni preprocesar OSRM. En cloud (Render) además ahorra RAM: OSRM self-hosted cuesta ~0.7–1.5 GB residente + 2–4 GB en el preprocesado.
 
 - Sin API key. Cubre Perú (datos OSM globales). Servicios `route` / `table` / `nearest` habilitados, perfil `driving`.
 - **Es demo-grade, no producción real**: fair-use ~1 req/seg, **sin SLA** y la política exige `User-Agent` válido (ya lo envía el cliente `osrm`).
-- Si el demo está caído o limita por rate, el routing **degrada con gracia** (igual que cuando OSRM local no está): `/api/routes/preview` y `/eta` devuelven 502 controlado; `discovery/nearby?useRoadDistance=true` cae a distancia Haversine; el resto de CRUD no se ve afectado.
-- Para producción real: self-host OSRM (p. ej. Oracle Always-Free ARM 24 GB) o una API gestionada (Mapbox 100k/mes, OpenRouteService 2k/día).
-
-**Dev local vs cloud:** en Docker dev el backend usa OSRM self-hosted (`osrm-backend:5000`); en cloud usa el demo público. No se necesita `--profile setup` en el cloud.
+- Si el demo está caído o limita por rate, el routing **degrada con gracia**: `/api/routes/preview` y `/eta` devuelven 502 controlado; `discovery/nearby?useRoadDistance=true` cae a distancia Haversine; el resto de CRUD no se ve afectado.
+- Para producción real / sin límites: self-host OSRM en local (perfil `osrm-local`, ver arriba) o en cloud (p. ej. Oracle Always-Free ARM 24 GB), o una API gestionada (Mapbox 100k/mes, OpenRouteService 2k/día).
 
 ## Base de datos
 
