@@ -346,6 +346,9 @@ builder.Services.AddHttpClient("osrm", client =>
     var timeout = int.TryParse(builder.Configuration["Osrm:TimeoutSeconds"], out var t) ? t : 10;
     client.BaseAddress = new Uri(baseUrl);
     client.Timeout = TimeSpan.FromSeconds(timeout);
+    // Public OSRM demo server (router.project-osrm.org) requires a valid User-Agent
+    // per its usage policy; without one requests may be blocked (403). Harmless for local OSRM.
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Chapaturuta-Frock/1.0 (+student-project)");
 });
 builder.Services.AddScoped<IOsrmRoutingService, OsrmRoutingService>();
 

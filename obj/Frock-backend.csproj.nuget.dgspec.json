@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "F:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj": {}
+    "f:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj": {}
   },
   "projects": {
-    "F:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj": {
+    "f:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj",
+        "projectUniqueName": "f:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj",
         "projectName": "Frock-backend",
-        "projectPath": "F:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj",
+        "projectPath": "f:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj",
         "packagesPath": "C:\\Users\\Rodrigo\\.nuget\\packages\\",
-        "outputPath": "F:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\obj\\",
+        "outputPath": "f:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Rodrigo\\AppData\\Roaming\\NuGet\\NuGet.Config"

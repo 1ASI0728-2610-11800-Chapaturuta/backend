@@ -23,5 +23,11 @@
         value: l7Z4AkM8nIw2sp7Eqs_4K3nXaQE
       - key: GeoApi__BaseUrl
         value: https://django-production-0960.up.railway.app/api/districts/
+      - key: Osrm__BaseUrl
+        value: https://router.project-osrm.org
+      - key: Osrm__TimeoutSeconds
+        value: "10"
+      - key: Osrm__Profile
+        value: driving
     healthCheckPath: /swagger/index.html
     autoDeploy: true

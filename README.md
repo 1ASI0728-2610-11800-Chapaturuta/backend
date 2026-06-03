@@ -62,20 +62,20 @@ Context/
 
 ## Setup automatizado para nuevos colaboradores
 
-El proyecto está organizado para que un compañero solo tenga que hacer **`git clone` + dos comandos Docker**. No hace falta descargar manualmente el PBF, instalar `osmium`, ni ejecutar nada en el host.
+El proyecto está organizado para que un compañero solo tenga que hacer **`git clone` + un comando Docker**. Por defecto el routing usa el **servidor demo público de OSRM** (`https://router.project-osrm.org`), así que **no hace falta descargar el PBF ni preprocesar nada**. Self-hostear OSRM en local es opcional (perfil `osrm-local`).
 
 ### Diagrama de servicios
 
 ```
-┌──────────────────────── perfil "setup" (correr 1 sola vez) ────────────────┐
-│  pbf-downloader  ──>  osrm-preprocess                                      │
-│  (curl Geofabrik)     (osrm-extract / partition / customize)               │
-│  ./osm-data/peru-260425.osm.pbf      ./osrm-data/peru-260425.osrm*         │
+┌──────────────────────── perfil por defecto (uso diario) ───────────────────┐
+│  mysql  ──>  backend  ──>  OSRM demo público (router.project-osrm.org)      │
+│  (sin descarga de PBF, sin preprocesado, sin contenedor OSRM local)        │
 └────────────────────────────────────────────────────────────────────────────┘
 
-┌──────────────────────── perfil por defecto (uso diario) ───────────────────┐
-│  mysql           ──>  backend                                              │
-│  osrm-backend    ──>  (consumido por backend on-demand)                    │
+┌──────── perfil "setup" + "osrm-local" (opcional: OSRM self-hosted) ─────────┐
+│  pbf-downloader  ──>  osrm-preprocess        ──>  osrm-backend             │
+│  (curl Geofabrik)     (extract/partition/customize)   (routing local)      │
+│  ./osm-data/*.pbf     ./osrm-data/*.osrm*                                   │
 └────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────── perfil "tiles" (opcional, +6 GB) ──────────────────┐
@@ -85,35 +85,35 @@ El proyecto está organizado para que un compañero solo tenga que hacer **`git 
 
 ### Cómo funciona el setup
 
-1. **`pbf-downloader`** (perfil `setup`) usa `curlimages/curl` para descargar `peru-latest.osm.pbf` desde Geofabrik (~240 MB) y guardarlo como `./osm-data/peru-260425.osm.pbf`. Si el archivo ya existe, no hace nada — es idempotente.
-2. **`osrm-preprocess`** (perfil `setup`) depende de que el downloader termine con éxito (`condition: service_completed_successfully`). Ejecuta `osrm-extract` → `osrm-partition` → `osrm-customize` y deja los `.osrm*` en `./osrm-data/`. Esto sí tarda (10–30 min, depende del hardware).
-3. **`backend`** ya **no** depende de OSRM en `depends_on`. Si OSRM no está disponible, las features de routing (preview, ETA, geometry de rutas) devuelven errores controlados, pero el resto de endpoints CRUD funcionan. Esto evita que un compañero tenga que esperar 30 min antes de poder ver Swagger.
+1. **Routing por defecto = demo público.** El backend apunta a `https://router.project-osrm.org` (keyless). No se descarga PBF ni se levanta OSRM local. Trade-off: fair-use ~1 req/seg y sin SLA → suficiente para dev/demo (ver [OSRM en producción](#osrm-en-producción-cloud)).
+2. **OSRM self-hosted local (opcional).** Solo si quieres routing sin depender del demo: `pbf-downloader` (perfil `setup`) descarga `peru-latest.osm.pbf` desde Geofabrik (~240 MB); `osrm-preprocess` corre `osrm-extract` → `osrm-partition` → `osrm-customize` (10–30 min); luego `osrm-backend` (perfil `osrm-local`) sirve el routing. Recuerda apuntar `Osrm__BaseUrl` de vuelta a `http://osrm-backend:5000`.
+3. **`backend`** **no** depende de OSRM en `depends_on`. Si OSRM (demo o local) no está disponible, las features de routing (preview, ETA, geometry) devuelven errores controlados y el resto de endpoints CRUD funcionan igual.
 4. **Datos geográficos** (regiones / provincias / distritos) se cargan al arrancar desde un snapshot OSM embebido en el repo (`stops/Infrastructure/Seeding/geo-data.json`, 1694 distritos). Generado offline con `backend/scripts/extract-geo.mjs` a partir del PBF + GDAL. Si el API externa configurada en `GeoApi:BaseUrl` está disponible, se usa esa; si falla (timeout, 502, etc.), cae automáticamente al snapshot local. **Cero acción manual**.
 5. **Tiles del mapa** (`osm-tile-server`) ahora viven en el perfil `tiles` y NO arrancan por defecto, porque el primer import demora 30 min y consume ~6 GB. El frontend tiene fallback a tiles públicos de OSM, así que el mapa funciona aunque el tile server local esté apagado.
 
 ### Inicio rápido (compañero nuevo)
 
 ```bash
-# 1. (una vez) descargar PBF + preprocesar OSRM
-#    Usamos `run --rm` para que SOLO se ejecute la cadena setup
-#    (pbf-downloader -> osrm-preprocess) y no arranquen mysql/osrm-backend
-#    en paralelo. Si osrm-backend arranca antes que osrm-preprocess termine,
-#    entra en crash loop con warnings "Missing/Broken File".
+# Caso normal: solo levantar la stack. Routing va al demo público de OSRM.
 cd backend
-docker compose --profile setup run --rm osrm-preprocess
+docker compose up -d --build      # mysql + backend. Sin descarga de PBF, sin preprocesado.
 
-# 2. (siempre) levantar la stack normal
-docker compose up -d --build
-
-# 3. (opcional) levantar tile server local para mapas
+# (opcional) tile server local para mapas
 docker compose --profile tiles-setup up osm-import   # 1 vez, ~30 min
 docker compose --profile tiles up -d osm-tile-server # uso normal
+
+# (opcional) OSRM self-hosted local en vez del demo público
+docker compose --profile setup run --rm osrm-preprocess   # 1 vez: descarga PBF + preprocesa (10–30 min)
+# luego pon Osrm__BaseUrl: "http://osrm-backend:5000" en el backend y:
+docker compose --profile osrm-local up -d --build
 ```
+
+> **Por defecto el routing usa el demo público** `https://router.project-osrm.org` — tanto en dev como en cloud. No necesitas descargar el PBF. El contenedor `osrm-backend` solo arranca con el perfil `osrm-local`.
 
 Verificación rápida:
 - Swagger: http://localhost:5027/swagger/index.html
 - Health: http://localhost:5027/health
-- OSRM (si terminó preprocess): http://localhost:5001/route/v1/driving/-77.0428,-12.0464;-77.0500,-12.0500
+- OSRM demo: https://router.project-osrm.org/route/v1/driving/-77.0428,-12.0464;-77.0500,-12.0500
 - Tiles (si está activo): http://localhost:8088/tile/10/302/486.png
 
 ### Re-generar el snapshot geográfico
@@ -162,19 +162,20 @@ backend/
 ### Ejecutar con Docker
 
 ```bash
-docker compose --profile setup run --rm osrm-preprocess  # 1ra vez: descarga PBF + preprocesa OSRM
-docker compose up -d --build                              # uso normal
+docker compose up -d --build      # uso normal. Routing vía demo público de OSRM.
 ```
+
+> **Routing por defecto = demo público** `https://router.project-osrm.org` (dev y cloud). El OSRM local es opcional vía perfil `osrm-local` (ver [OSRM en producción](#osrm-en-producción-cloud)).
 
 Esto levanta:
 - **MySQL 8.0** en puerto `3307`
 - **Backend API** en puerto `5027`
-- **OSRM routing** en puerto `5001`
 - **OSM Tile Server** (perfil `tiles`, opcional) en puerto `8088`
+- (opcional, perfil `osrm-local`) **OSRM routing** en puerto `5001`
 
 Swagger UI: http://localhost:5027/swagger/index.html
 
-Verificar OSRM: http://localhost:5001/route/v1/driving/-77.0428,-12.0464;-77.0500,-12.0500
+Verificar OSRM (demo): https://router.project-osrm.org/route/v1/driving/-77.0428,-12.0464;-77.0500,-12.0500
 
 Verificar tiles: http://localhost:8088/tile/10/302/486.png
 
@@ -331,10 +332,21 @@ Swagger UI: http://localhost:5027/swagger/index.html
 | `ConnectionStrings__DefaultConnection` | Connection string MySQL | `server=localhost;user=root;password=root;database=frockdb` |
 | `ASPNETCORE_ENVIRONMENT` | Entorno | `Development` |
 | `GeoApi__BaseUrl` | URL API geografica externa | `https://django-production-0960.up.railway.app/api/districts/` |
-| `Osrm__BaseUrl` | URL interna del servicio OSRM | `http://localhost:5001` |
+| `Osrm__BaseUrl` | URL del servicio OSRM. Default = demo público `https://router.project-osrm.org` (dev y cloud, sin OSRM local). Para self-host local: `http://osrm-backend:5000` con perfil `osrm-local` | `https://router.project-osrm.org` |
 | `Osrm__TimeoutSeconds` | Timeout HTTP a OSRM (segundos) | `10` |
 | `Osrm__Profile` | Perfil de routing OSRM | `driving` |
 | `OsmTiles__PublicUrl` | URL de tiles expuesta al frontend | `http://localhost:8088/tile/{z}/{x}/{y}.png` |
+
+## OSRM en producción (cloud)
+
+En el deploy de Render **no se levanta OSRM** (es costoso en RAM: ~0.7–1.5 GB residente + 2–4 GB en el preprocesado). En su lugar, `render.yaml` apunta `Osrm__BaseUrl` al **servidor demo público** `https://router.project-osrm.org`:
+
+- Sin API key. Cubre Perú (datos OSM globales). Servicios `route` / `table` / `nearest` habilitados, perfil `driving`.
+- **Es demo-grade, no producción real**: fair-use ~1 req/seg, **sin SLA** y la política exige `User-Agent` válido (ya lo envía el cliente `osrm`).
+- Si el demo está caído o limita por rate, el routing **degrada con gracia** (igual que cuando OSRM local no está): `/api/routes/preview` y `/eta` devuelven 502 controlado; `discovery/nearby?useRoadDistance=true` cae a distancia Haversine; el resto de CRUD no se ve afectado.
+- Para producción real: self-host OSRM (p. ej. Oracle Always-Free ARM 24 GB) o una API gestionada (Mapbox 100k/mes, OpenRouteService 2k/día).
+
+**Dev local vs cloud:** en Docker dev el backend usa OSRM self-hosted (`osrm-backend:5000`); en cloud usa el demo público. No se necesita `--profile setup` en el cloud.
 
 ## Base de datos
 

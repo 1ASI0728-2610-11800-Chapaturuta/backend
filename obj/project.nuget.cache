@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "6203WuRO7oA=",
+  "dgSpecHash": "Swqo78h8Q+Q=",
   "success": true,
-  "projectFilePath": "F:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj",
+  "projectFilePath": "f:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Rodrigo\\.nuget\\packages\\aspnetcore.healthchecks.mysql\\9.0.0\\aspnetcore.healthchecks.mysql.9.0.0.nupkg.sha512",
     "C:\\Users\\Rodrigo\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
