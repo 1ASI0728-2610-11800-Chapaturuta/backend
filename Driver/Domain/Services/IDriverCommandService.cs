@@ -9,5 +9,6 @@ public interface IDriverCommandService
     Task<DriverAggregate?> Handle(UpdateDriverCommand command);
     Task<DriverAggregate?> Handle(UpdateVehicleCommand command);
     Task<DriverAggregate?> Handle(ToggleAvailabilityCommand command);
+    Task<DriverAggregate?> Handle(UpdateDriverPhotoCommand command);
     Task<bool> Handle(DeleteDriverCommand command);
 }

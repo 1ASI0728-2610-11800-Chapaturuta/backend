@@ -23,4 +23,37 @@ public class TripCommandService(ITripRepository tripRepository, IUnitOfWork unit
             throw new Exception($"An error occurred while creating trip: {e.Message}");
         }
     }
+
+    public async Task<Trip?> Handle(StartTripCommand command)
+    {
+        var trip = await tripRepository.FindByIdAsync(command.TripId);
+        if (trip == null) return null;
+
+        trip.Start();
+        tripRepository.Update(trip);
+        await unitOfWork.CompleteAsync();
+        return trip;
+    }
+
+    public async Task<Trip?> Handle(CompleteTripCommand command)
+    {
+        var trip = await tripRepository.FindByIdAsync(command.TripId);
+        if (trip == null) return null;
+
+        trip.Complete();
+        tripRepository.Update(trip);
+        await unitOfWork.CompleteAsync();
+        return trip;
+    }
+
+    public async Task<Trip?> Handle(CancelTripCommand command)
+    {
+        var trip = await tripRepository.FindByIdAsync(command.TripId);
+        if (trip == null) return null;
+
+        trip.Cancel();
+        tripRepository.Update(trip);
+        await unitOfWork.CompleteAsync();
+        return trip;
+    }
 }

@@ -7,6 +7,7 @@ using Frock_backend.stops.Domain.Model.Aggregates.Geographic;
 using Frock_backend.IAM.Domain.Model.Aggregates;
 using Frock_backend.Ratings.Domain.Model.Aggregates;
 using Frock_backend.Trips.Domain.Model.Aggregates;
+using Frock_backend.Trips.Domain.Model.ValueObjects;
 using Frock_backend.Collections.Domain.Model.Aggregates;
 using Frock_backend.Notifications.Domain.Model.Aggregates;
 
@@ -165,7 +166,7 @@ namespace Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration
                 b.HasKey(t => t.Id);
                 b.Property(t => t.Id).IsRequired().ValueGeneratedOnAdd();
                 b.Property(t => t.StartTime).IsRequired();
-                b.Property(t => t.Status).HasMaxLength(20).HasDefaultValue("Pending");
+                b.Property(t => t.Status).HasConversion<string>().HasMaxLength(20).HasDefaultValue(TripStatus.Pending);
                 b.Property(t => t.Price).HasColumnType("decimal(12,2)");
                 b.Property(t => t.AvailableSeats).HasDefaultValue(0);
                 b.HasOne<User>().WithMany().HasForeignKey(t => t.FkIdUser).OnDelete(DeleteBehavior.Restrict);

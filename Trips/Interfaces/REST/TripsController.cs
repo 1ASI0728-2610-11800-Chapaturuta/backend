@@ -52,6 +52,30 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
         return Ok(resources);
     }
 
+    [HttpGet("user/{userId}/history")]
+    [Authorize]
+    [SwaggerOperation(Summary = "Get enriched trip history for a passenger (resolved names)", OperationId = "GetTripHistoryByUser")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Trip history found", typeof(IEnumerable<TripHistoryResource>))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+    public async Task<IActionResult> GetTripHistoryByUser(int userId)
+    {
+        var views = await queryService.Handle(new GetTripHistoryByUserIdQuery(userId));
+        var resources = views.Select(TripHistoryResourceFromViewAssembler.ToResourceFromView);
+        return Ok(resources);
+    }
+
+    [HttpGet("driver/{driverId}/history")]
+    [Authorize]
+    [SwaggerOperation(Summary = "Get enriched trip history for a driver (resolved names)", OperationId = "GetTripHistoryByDriver")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Trip history found", typeof(IEnumerable<TripHistoryResource>))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+    public async Task<IActionResult> GetTripHistoryByDriver(int driverId)
+    {
+        var views = await queryService.Handle(new GetTripHistoryByDriverIdQuery(driverId));
+        var resources = views.Select(TripHistoryResourceFromViewAssembler.ToResourceFromView);
+        return Ok(resources);
+    }
+
     [HttpGet("driver/{driverId}")]
     [Authorize]
     [SwaggerOperation(Summary = "Get trip history for a driver", OperationId = "GetTripsByDriver")]
@@ -63,6 +87,63 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
         var trips = await queryService.Handle(query);
         var resources = trips.Select(TripResourceFromEntityAssembler.ToResourceFromEntity);
         return Ok(resources);
+    }
+
+    [HttpPost("{id}/start")]
+    [Authorize(Role.Driver, Role.Admin)]
+    [SwaggerOperation(Summary = "Start a trip", OperationId = "StartTrip")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Trip started", typeof(TripResource))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Trip not found")]
+    public async Task<IActionResult> StartTrip(int id)
+    {
+        try
+        {
+            var trip = await commandService.Handle(new StartTripCommand(id));
+            if (trip == null) return NotFound();
+            return Ok(TripResourceFromEntityAssembler.ToResourceFromEntity(trip));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/complete")]
+    [Authorize(Role.Driver, Role.Admin)]
+    [SwaggerOperation(Summary = "Complete a trip", OperationId = "CompleteTrip")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Trip completed", typeof(TripResource))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Trip not found")]
+    public async Task<IActionResult> CompleteTrip(int id)
+    {
+        try
+        {
+            var trip = await commandService.Handle(new CompleteTripCommand(id));
+            if (trip == null) return NotFound();
+            return Ok(TripResourceFromEntityAssembler.ToResourceFromEntity(trip));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/cancel")]
+    [Authorize(Role.Driver, Role.Admin)]
+    [SwaggerOperation(Summary = "Cancel a trip", OperationId = "CancelTrip")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Trip cancelled", typeof(TripResource))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Trip not found")]
+    public async Task<IActionResult> CancelTrip(int id)
+    {
+        try
+        {
+            var trip = await commandService.Handle(new CancelTripCommand(id));
+            if (trip == null) return NotFound();
+            return Ok(TripResourceFromEntityAssembler.ToResourceFromEntity(trip));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("{id}")]

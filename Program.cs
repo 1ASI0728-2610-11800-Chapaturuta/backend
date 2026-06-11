@@ -96,6 +96,8 @@ using Frock_backend.Trips.Domain.Services;
 using Frock_backend.Trips.Infrastructure.Repositories;
 using Frock_backend.Trips.Application.Internal.CommandServices;
 using Frock_backend.Trips.Application.Internal.QueryServices;
+using Frock_backend.Trips.Interfaces.ACL;
+using Frock_backend.Trips.Interfaces.ACL.Services;
 
 // COLLECTIONS
 using Frock_backend.Collections.Domain.Repositories;
@@ -135,7 +137,8 @@ builder.Host.UseSerilog();
 // ============================================================
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
-builder.Services.AddControllers(options => options.Conventions.Add(new KebabCaseRouteNamingConvention()));
+builder.Services.AddControllers(options => options.Conventions.Add(new KebabCaseRouteNamingConvention()))
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 
 // Global Exception Handler
@@ -316,6 +319,7 @@ builder.Services.AddScoped<ITripQueryService, TripQueryService>();
 builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 builder.Services.AddScoped<IReservationCommandService, ReservationCommandService>();
 builder.Services.AddScoped<IReservationQueryService, ReservationQueryService>();
+builder.Services.AddScoped<ITripsContextFacade, TripsContextFacade>();
 
 // ============================================================
 // Dependency Injection — Collections

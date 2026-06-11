@@ -83,6 +83,18 @@ public class DriverCommandService(
         return driver;
     }
 
+    public async Task<DriverAggregate?> Handle(UpdateDriverPhotoCommand command)
+    {
+        var driver = await driverRepository.FindByIdAsync(command.DriverId);
+        if (driver == null) return null;
+
+        // Empty strings are ignored by UpdatePersonalInfo; only PhotoUrl is updated.
+        driver.UpdatePersonalInfo(string.Empty, string.Empty, string.Empty, command.PhotoUrl);
+        driverRepository.Update(driver);
+        await unitOfWork.CompleteAsync();
+        return driver;
+    }
+
     public async Task<bool> Handle(DeleteDriverCommand command)
     {
         var driver = await driverRepository.FindByIdAsync(command.Id);

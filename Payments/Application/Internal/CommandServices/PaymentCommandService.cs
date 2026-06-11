@@ -39,6 +39,9 @@ public class PaymentCommandService(
         var payment = await paymentRepository.FindByIdAsync(command.PaymentId);
         if (payment == null) return null;
 
+        // Idempotency: PayU retries the webhook; only confirm a still-pending payment.
+        if (payment.Status != PaymentStatus.Pending) return payment;
+
         payment.Confirm(command.ExternalReference);
         paymentRepository.Update(payment);
         await unitOfWork.CompleteAsync();

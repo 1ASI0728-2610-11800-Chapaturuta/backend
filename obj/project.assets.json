@@ -11899,19 +11899,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Rodrigo\\.nuget\\packages\\": {}
+    "C:\\Users\\51924\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "F:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj",
+      "projectUniqueName": "H:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj",
       "projectName": "Frock-backend",
-      "projectPath": "F:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\Frock-backend.csproj",
-      "packagesPath": "C:\\Users\\Rodrigo\\.nuget\\packages\\",
-      "outputPath": "F:\\Ciclo8\\Arqui\\TrabajoFinal\\backend\\obj\\",
+      "projectPath": "H:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj",
+      "packagesPath": "C:\\Users\\51924\\.nuget\\packages\\",
+      "outputPath": "H:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\Rodrigo\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\51924\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
@@ -12073,7 +12073,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.315/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

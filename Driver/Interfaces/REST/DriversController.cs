@@ -4,6 +4,7 @@ using Frock_backend.Driver.Domain.Model.ValueObjects;
 using Frock_backend.Driver.Domain.Services;
 using Frock_backend.Driver.Interfaces.REST.Resources;
 using Frock_backend.Driver.Interfaces.REST.Transform;
+using Frock_backend.shared.Domain.Services;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net.Mime;
@@ -16,8 +17,12 @@ namespace Frock_backend.Driver.Interfaces.REST;
 [Tags("Drivers")]
 public class DriversController(
     IDriverCommandService commandService,
-    IDriverQueryService queryService) : ControllerBase
+    IDriverQueryService queryService,
+    ICloudinaryService cloudinaryService) : ControllerBase
 {
+    private static readonly string[] AllowedImageTypes = { "image/jpeg", "image/png", "image/webp" };
+    private const long MaxPhotoBytes = 5 * 1024 * 1024;
+
     [HttpPost]
     [SwaggerOperation(Summary = "Create a driver", OperationId = "CreateDriver")]
     [SwaggerResponse(StatusCodes.Status201Created, "Driver created", typeof(DriverResource))]
@@ -139,6 +144,34 @@ public class DriversController(
         {
             var command = new ToggleAvailabilityCommand(id);
             var driver = await commandService.Handle(command);
+            if (driver == null) return NotFound();
+            return Ok(DriverResourceFromEntityAssembler.ToResourceFromEntity(driver));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:int}/photo")]
+    [Consumes("multipart/form-data")]
+    [SwaggerOperation(Summary = "Upload driver photo to Cloudinary", OperationId = "UploadDriverPhoto")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Photo uploaded", typeof(DriverResource))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid file")]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Driver not found")]
+    public async Task<IActionResult> UploadDriverPhoto(int id, IFormFile file)
+    {
+        try
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "No file provided" });
+            if (file.Length > MaxPhotoBytes)
+                return BadRequest(new { message = "File exceeds 5 MB limit" });
+            if (!AllowedImageTypes.Contains(file.ContentType))
+                return BadRequest(new { message = "Only JPEG, PNG or WebP images are allowed" });
+
+            var url = await cloudinaryService.UploadImageAsync(file, "drivers");
+            var driver = await commandService.Handle(new UpdateDriverPhotoCommand(id, url));
             if (driver == null) return NotFound();
             return Ok(DriverResourceFromEntityAssembler.ToResourceFromEntity(driver));
         }

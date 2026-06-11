@@ -6,5 +6,5 @@ namespace Frock_backend.Trips.Interfaces.REST.Transform;
 public static class TripResourceFromEntityAssembler
 {
     public static TripResource ToResourceFromEntity(Trip entity) =>
-        new TripResource(entity.Id, entity.FkIdUser, entity.FkIdDriver, entity.FkIdRoute, entity.FkIdOriginStop, entity.FkIdDestinationStop, entity.StartTime, entity.EndTime, entity.Price, entity.Status, entity.AvailableSeats);
+        new TripResource(entity.Id, entity.FkIdUser, entity.FkIdDriver, entity.FkIdRoute, entity.FkIdOriginStop, entity.FkIdDestinationStop, entity.StartTime, entity.EndTime, entity.Price, entity.Status.ToString(), entity.AvailableSeats);
 }
