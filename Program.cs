@@ -376,16 +376,26 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 // ============================================================
 // CORS
 // ============================================================
+var defaultOrigins = new[]
+{
+    "http://localhost:5173",
+    "https://frock-frontend.vercel.app",
+    "https://frock-frontend-git-main-yassers.vercel.app",
+    "https://frock-backend-monolito.onrender.com"
+};
+
+// Origenes extra via config/env: Cors__AllowedOrigins__0=https://tu-app.pages.dev
+var extraOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
+var allowedOrigins = defaultOrigins.Concat(extraOrigins).Distinct().ToArray();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "https://frock-frontend.vercel.app",
-                "https://frock-frontend-git-main-yassers.vercel.app",
-                "https://frock-backend-monolito.onrender.com"
-            )
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();

@@ -41,15 +41,18 @@ public class PayUController(
         if (payment == null) return NotFound();
 
         var input = new PayUChargeInput(
-            resource.CardToken,
+            resource.CardNumber,
+            resource.CardSecurityCode,
+            resource.CardExpirationDate,
+            resource.CardHolderName,
             resource.PayerFullName,
             resource.PayerEmail,
             resource.PayerDocumentNumber,
             resource.PaymentMethodBrand,
-            resource.PayerIpAddress,
+            resource.PayerIpAddress ?? HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
             resource.DeviceSessionId,
-            resource.PayerUserAgent,
-            resource.PayerCookie);
+            resource.PayerUserAgent ?? Request.Headers.UserAgent.ToString(),
+            resource.PayerCookie ?? string.Empty);
 
         var result = await gateway.ChargeWithTokenAsync(payment, input);
         if (!result.Success)

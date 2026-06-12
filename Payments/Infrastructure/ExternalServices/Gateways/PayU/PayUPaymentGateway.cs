@@ -35,7 +35,13 @@ public class PayUPaymentGateway(
                 Type = "AUTHORIZATION_AND_CAPTURE",
                 PaymentMethod = input.PaymentMethodBrand,
                 PaymentCountry = "PE",
-                CreditCardTokenId = input.CardToken,
+                CreditCard = new PayUCreditCard
+                {
+                    Number = input.CardNumber,
+                    SecurityCode = input.CardSecurityCode,
+                    ExpirationDate = input.CardExpirationDate,
+                    Name = input.CardHolderName
+                },
                 DeviceSessionId = input.DeviceSessionId,
                 IpAddress = input.PayerIpAddress,
                 UserAgent = input.PayerUserAgent,

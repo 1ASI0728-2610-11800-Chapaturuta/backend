@@ -3,7 +3,10 @@ using System.Text.Json.Serialization;
 namespace Frock_backend.Payments.Infrastructure.ExternalServices.Gateways.PayU;
 
 public record PayUChargeInput(
-    string CardToken,
+    string CardNumber,
+    string CardSecurityCode,
+    string CardExpirationDate, // YYYY/MM
+    string CardHolderName,
     string PayerFullName,
     string PayerEmail,
     string PayerDocumentNumber,
@@ -33,6 +36,7 @@ public class PayUTransaction
     [JsonPropertyName("order")] public PayUOrder Order { get; set; } = new();
     [JsonPropertyName("payer")] public PayUPayer? Payer { get; set; }
     [JsonPropertyName("creditCardTokenId")] public string? CreditCardTokenId { get; set; }
+    [JsonPropertyName("creditCard")] public PayUCreditCard? CreditCard { get; set; }
     [JsonPropertyName("extraParameters")] public Dictionary<string, object>? ExtraParameters { get; set; }
     [JsonPropertyName("type")] public string Type { get; set; } = "AUTHORIZATION_AND_CAPTURE";
     [JsonPropertyName("paymentMethod")] public string PaymentMethod { get; set; } = "VISA";
@@ -74,6 +78,14 @@ public class PayUBuyer
     [JsonPropertyName("fullName")] public string FullName { get; set; } = string.Empty;
     [JsonPropertyName("emailAddress")] public string EmailAddress { get; set; } = string.Empty;
     [JsonPropertyName("dniNumber")] public string? DniNumber { get; set; }
+}
+
+public class PayUCreditCard
+{
+    [JsonPropertyName("number")] public string Number { get; set; } = string.Empty;
+    [JsonPropertyName("securityCode")] public string SecurityCode { get; set; } = string.Empty;
+    [JsonPropertyName("expirationDate")] public string ExpirationDate { get; set; } = string.Empty; // YYYY/MM
+    [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
 }
 
 public class PayUPayer

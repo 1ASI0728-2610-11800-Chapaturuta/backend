@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("ebae0e70-c11b-489a-9d15-25a3873ee399")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("Frock-backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+53774d1360a88326b21e5714b89035c3464acb0c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1567c865205474face93485a03c6c69d6d5153d0")]
 [assembly: System.Reflection.AssemblyProductAttribute("Frock-backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Frock-backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

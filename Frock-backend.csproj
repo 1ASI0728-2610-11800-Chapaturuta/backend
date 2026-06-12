@@ -5,6 +5,7 @@
 	  <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Frock_backend</RootNamespace>
+    <UserSecretsId>ebae0e70-c11b-489a-9d15-25a3873ee399</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
