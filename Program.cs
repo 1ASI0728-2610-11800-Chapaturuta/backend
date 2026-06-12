@@ -361,7 +361,11 @@ builder.Services.AddScoped<IOsrmRoutingService, OsrmRoutingService>();
 // ============================================================
 builder.Services.AddHttpClient<IGeoImportService, GeoImportService>(client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["GeoApi:BaseUrl"]!);
+    // BaseUrl may be empty (then GeoImportService falls back to the bundled snapshot);
+    // new Uri("") throws, so only set BaseAddress when a URL is configured.
+    var geoApiUrl = builder.Configuration["GeoApi:BaseUrl"];
+    if (!string.IsNullOrWhiteSpace(geoApiUrl))
+        client.BaseAddress = new Uri(geoApiUrl);
 });
 builder.Services.AddScoped<GeographicDataSeeder>();
 
