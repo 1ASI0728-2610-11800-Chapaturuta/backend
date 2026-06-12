@@ -3,3 +3,14 @@ obj/
 .idea/
 *.user
 logs/
+
+# Datos pesados que NO van en la imagen (se descargan aparte / OSRM = demo publico).
+# Sin esto, az containerapp up sube ~2.2 GB de context y se cuelga.
+osm-data/
+osrm-data/
+scripts/node_modules/
+.git/
+.vs/
+*.pbf
+*.osrm*
+deploy/azure.env.local

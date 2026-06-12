@@ -6,7 +6,17 @@
   Ver  plans/deploy-plan.md  paso 3.
 #>
 
-$ErrorActionPreference = "Stop"
+# PS 5.1: NO usar Stop con comandos nativos (az). Redirigir/!capturar su stderr
+# se envuelve como NativeCommandError. Controlamos errores via $LASTEXITCODE.
+$ErrorActionPreference = "Continue"
+# Silenciar warnings de az (ej. "altered by extension") para que no ensucien stderr.
+$env:AZURE_CORE_ONLY_SHOW_ERRORS = "true"
+
+function Invoke-Az {
+    param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $Args)
+    & az @Args
+    if ($LASTEXITCODE -ne 0) { throw "az fallo (exit $LASTEXITCODE): az $($Args -join ' ')" }
+}
 
 # ---- Cargar secretos desde azure.env.local (KEY=VALUE por linea) ----
 $envFile = Join-Path $PSScriptRoot "azure.env.local"
@@ -26,15 +36,18 @@ $ENVNAME  = "cae-chapaturuta"          # Container Apps Environment
 $APP      = "frock-backend"
 $LOCATION = "eastus"
 
+# Anclar CWD a la raiz del backend (donde esta el Dockerfile) para que '--source .' apunte bien.
+Set-Location (Split-Path $PSScriptRoot -Parent)
+
 Write-Host "==> Resource group" -ForegroundColor Cyan
-az group create --name $RG --location $LOCATION | Out-Null
+Invoke-Az group create --name $RG --location $LOCATION | Out-Null
 
 Write-Host "==> Container Apps environment (idempotente)" -ForegroundColor Cyan
-az containerapp env create --name $ENVNAME --resource-group $RG --location $LOCATION 2>$null | Out-Null
+Invoke-Az containerapp env create --name $ENVNAME --resource-group $RG --location $LOCATION | Out-Null
 
 Write-Host "==> Build + deploy desde Dockerfile (az containerapp up)" -ForegroundColor Cyan
 # 'up' construye la imagen en la nube (ACR) y crea/actualiza el Container App.
-az containerapp up `
+Invoke-Az containerapp up `
     --name $APP `
     --resource-group $RG `
     --environment $ENVNAME `
@@ -43,12 +56,12 @@ az containerapp up `
     --target-port 8080
 
 Write-Host "==> Configurar variables de entorno + secretos" -ForegroundColor Cyan
-az containerapp secret set --name $APP --resource-group $RG --secrets `
+Invoke-Az containerapp secret set --name $APP --resource-group $RG --secrets `
     "connstr=$($cfg['ConnectionStrings__DefaultConnection'])" `
     "jwt=$($cfg['TokenSettings__Secret'])" `
     "cloud-secret=$($cfg['Cloudinary__ApiSecret'])" | Out-Null
 
-az containerapp update --name $APP --resource-group $RG `
+Invoke-Az containerapp update --name $APP --resource-group $RG `
     --set-env-vars `
         "ASPNETCORE_ENVIRONMENT=Production" `
         "ASPNETCORE_URLS=http://+:8080" `
