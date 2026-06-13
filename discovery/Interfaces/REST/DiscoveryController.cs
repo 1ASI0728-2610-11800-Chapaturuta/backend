@@ -13,8 +13,31 @@ namespace Frock_backend.Discovery.Interfaces.REST;
 [Route("api/[controller]")]
 [Produces(MediaTypeNames.Application.Json)]
 [Tags("Discovery")]
-public class DiscoveryController(IDiscoveryQueryService queryService) : ControllerBase
+public class DiscoveryController(
+    IDiscoveryQueryService queryService,
+    IAssistantQueryService assistantQueryService) : ControllerBase
 {
+    [HttpPost("assistant")]
+    [SwaggerOperation(
+        Summary = "Asistente IA de viajes multi-tramo (Premium)",
+        Description = "Recibe una consulta en lenguaje natural y devuelve un itinerario que encadena rutas con transbordos a pie para llegar a destinos sin ruta directa. Exclusivo de pasajeros con plan Premium activo.",
+        OperationId = "TravelAssistant")]
+    [SwaggerResponse(200, "Respuesta del asistente con itinerarios")]
+    [SwaggerResponse(403, "El Asistente IA es exclusivo del plan Premium")]
+    public async Task<IActionResult> Assistant([FromBody] AssistantRequestResource resource)
+    {
+        try
+        {
+            var reply = await assistantQueryService.Handle(
+                new PlanJourneyQuery(resource.UserId, resource.Message));
+            return Ok(new { reply = reply.Reply, itineraries = reply.Itineraries });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+    }
+
     [HttpGet("search")]
     [SwaggerOperation(
         Summary = "Search routes by origin/destination",

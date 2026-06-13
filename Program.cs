@@ -343,6 +343,22 @@ builder.Services.AddScoped<INotificationQueryService, NotificationQueryService>(
 // ============================================================
 builder.Services.AddScoped<IDiscoveryQueryService, DiscoveryQueryService>();
 
+// Asistente IA de viajes multi-tramo (Pasajero Premium).
+// Grafo = fuente de verdad; el LLM (Ollama local, swappable a Claude) solo narra.
+builder.Services.AddScoped<Frock_backend.Discovery.Domain.Services.IJourneyPlanner,
+    Frock_backend.Discovery.Application.Internal.Services.JourneyPlannerService>();
+builder.Services.AddScoped<Frock_backend.Discovery.Domain.Services.IChatAssistant,
+    Frock_backend.Discovery.Infrastructure.ExternalServices.OllamaChatAssistant>();
+builder.Services.AddScoped<Frock_backend.Discovery.Domain.Services.IAssistantQueryService,
+    Frock_backend.Discovery.Application.Internal.QueryServices.AssistantQueryService>();
+builder.Services.AddHttpClient("ollama", client =>
+{
+    var baseUrl = builder.Configuration["Assistant:BaseUrl"] ?? "http://localhost:11434";
+    var timeout = int.TryParse(builder.Configuration["Assistant:TimeoutSeconds"], out var t) ? t : 30;
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(timeout);
+});
+
 // ============================================================
 // OSRM Routing Service
 // ============================================================
