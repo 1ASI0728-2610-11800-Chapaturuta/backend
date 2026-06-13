@@ -264,6 +264,8 @@ builder.Services.AddScoped<ICardPaymentGateway>(sp => sp.GetRequiredService<IPay
 builder.Services.AddScoped<ICashPaymentHandler, CashPaymentHandler>();
 builder.Services.AddScoped<PaymentGatewayFactory>();
 builder.Services.AddScoped<IPaymentsContextFacade, PaymentsContextFacade>();
+// Orchestrates payment confirmation -> reservation/subscription activation (no DI cycle).
+builder.Services.AddScoped<PaymentConfirmationService>();
 
 // ============================================================
 // Dependency Injection — Subscriptions BC (wired by F4)

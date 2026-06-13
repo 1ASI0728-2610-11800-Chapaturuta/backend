@@ -1,4 +1,5 @@
-﻿using Frock_backend.shared.Domain.Repositories;
+﻿using Frock_backend.shared.Domain.Geo;
+using Frock_backend.shared.Domain.Repositories;
 using Frock_backend.stops.Domain.Model.Aggregates;
 using Frock_backend.stops.Domain.Model.Commands;
 using Frock_backend.stops.Domain.Repositories;
@@ -22,6 +23,9 @@ namespace Frock_backend.stops.Application.Internal.CommandServices
     {
         public async Task<Stop?> Handle(CreateStopCommand command)
         {
+            if (!PeruBounds.Contains(command.Latitude, command.Longitude))
+                throw new ArgumentException("La ubicación del paradero debe estar dentro de Perú.");
+
             var existingStop =
                 await stopRepository.FindByNameAndFkIdDriverAsync(command.Name, command.FkIdDriver);
             // Note: The XML doc for IStopCommandService.Handle(CreateStopCommand) suggests an upsert behavior.
@@ -29,9 +33,7 @@ namespace Frock_backend.stops.Application.Internal.CommandServices
             // Keeping the throw behavior as per the current code for this example.
             if (existingStop != null)
             {
-                // logger?.LogWarning("Create failed: Stop with name {StopName} already exists for Driver {DriverId}.", command.Name, command.FkIdDriver);
-                // Consider a custom exception type for "already exists"
-                throw new Exception($"Stop with name '{command.Name}' already exists for Driver '{command.FkIdDriver}'.");
+                throw new InvalidOperationException($"Ya tienes un paradero con el nombre '{command.Name}'.");
             }
 
             var newStop = new Stop(command);
@@ -50,6 +52,9 @@ namespace Frock_backend.stops.Application.Internal.CommandServices
 
         public async Task<Stop?> Handle(UpdateStopCommand command)
         {
+            if (!PeruBounds.Contains(command.Latitude, command.Longitude))
+                throw new ArgumentException("La ubicación del paradero debe estar dentro de Perú.");
+
             var stopToUpdate = await stopRepository.FindByIdAsync(command.Id);
             if (stopToUpdate == null)
             {

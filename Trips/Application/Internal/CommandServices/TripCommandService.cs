@@ -12,16 +12,12 @@ public class TripCommandService(ITripRepository tripRepository, IUnitOfWork unit
     {
         var trip = new Trip(command.FkIdUser, command.FkIdDriver, command.FkIdRoute, command.FkIdOriginStop, command.FkIdDestinationStop, command.Price, command.AvailableSeats);
 
-        try
-        {
-            await tripRepository.AddAsync(trip);
-            await unitOfWork.CompleteAsync();
-            return trip;
-        }
-        catch (Exception e)
-        {
-            throw new Exception($"An error occurred while creating trip: {e.Message}");
-        }
+        // Don't re-wrap persistence failures in a bare Exception: that discarded the
+        // DbUpdateException (and its InnerException with the real SQL error) and made the
+        // controller return a generic 400. Let it propagate so it's logged and mapped properly.
+        await tripRepository.AddAsync(trip);
+        await unitOfWork.CompleteAsync();
+        return trip;
     }
 
     public async Task<Trip?> Handle(StartTripCommand command)

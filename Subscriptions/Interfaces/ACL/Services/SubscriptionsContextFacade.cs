@@ -64,4 +64,15 @@ public class SubscriptionsContextFacade(
     {
         await subscriptionCommandService.Handle(new ConsumeDiscoveryQuotaCommand(userId));
     }
+
+    /**
+     * <summary>
+     *     Activates a subscription awaiting payment once its backing payment has been confirmed.
+     * </summary>
+     * <param name="subscriptionId">The ID of the subscription to activate.</param>
+     */
+    public async Task ActivateSubscriptionAsync(int subscriptionId)
+    {
+        await subscriptionCommandService.Handle(new ActivateSubscriptionCommand(subscriptionId));
+    }
 }

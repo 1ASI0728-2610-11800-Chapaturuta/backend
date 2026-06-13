@@ -1,3 +1,4 @@
+using Frock_backend.shared.Domain.Geo;
 using Frock_backend.shared.Interface.REST.Resources;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -27,7 +28,7 @@ public class MapController(IConfiguration configuration) : ControllerBase
             Attribution: "© OpenStreetMap contributors",
             MinZoom: 5,
             MaxZoom: 19,
-            BoundingBox: new BoundingBoxResource(-18.35, -0.03, -81.33, -68.65)
+            BoundingBox: new BoundingBoxResource(PeruBounds.MinLat, PeruBounds.MaxLat, PeruBounds.MinLng, PeruBounds.MaxLng)
         ));
     }
 }

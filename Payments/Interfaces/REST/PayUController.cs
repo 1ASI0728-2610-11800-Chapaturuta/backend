@@ -1,11 +1,11 @@
 using System.Globalization;
+using Frock_backend.Payments.Application.Internal.CommandServices;
 using Frock_backend.Payments.Domain.Model.Commands;
 using Frock_backend.Payments.Domain.Repositories;
 using Frock_backend.Payments.Domain.Services;
 using Frock_backend.Payments.Domain.Services.Gateways;
 using Frock_backend.Payments.Infrastructure.ExternalServices.Gateways.PayU;
 using Frock_backend.Payments.Interfaces.REST.Resources;
-using Frock_backend.Trips.Interfaces.ACL;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.Annotations;
@@ -18,20 +18,10 @@ public class PayUController(
     IPayUPaymentGateway gateway,
     IPaymentRepository paymentRepository,
     IPaymentCommandService paymentCommandService,
-    ITripsContextFacade tripsContextFacade,
+    PaymentConfirmationService paymentConfirmationService,
     IOptions<PayUSettings> settings) : ControllerBase
 {
     private readonly PayUSettings _settings = settings.Value;
-
-    // Confirms the payment and, if it backs a reservation, confirms that reservation too.
-    // Linking lives here (not in PaymentCommandService) to avoid a circular dependency
-    // between the Payments and Trips ACL facades.
-    private async Task ConfirmPaymentAndReservationAsync(int paymentId, string externalReference)
-    {
-        var payment = await paymentCommandService.Handle(new ConfirmPaymentCommand(paymentId, externalReference));
-        if (payment != null && string.Equals(payment.ReferenceType, "Reservation", StringComparison.OrdinalIgnoreCase))
-            await tripsContextFacade.ConfirmReservationAsync(payment.ReferenceId);
-    }
 
     [HttpPost("{paymentId:int}/charge")]
     [SwaggerOperation(Summary = "Carga una tarjeta tokenizada vía PayU para el pago indicado")]
@@ -59,7 +49,7 @@ public class PayUController(
             return BadRequest(new { result.Message });
 
         if (!string.IsNullOrEmpty(result.ExternalReference))
-            await ConfirmPaymentAndReservationAsync(paymentId, result.ExternalReference);
+            await paymentConfirmationService.ConfirmAsync(paymentId, result.ExternalReference);
 
         return Accepted(new { paymentId, externalReference = result.ExternalReference, message = result.Message });
     }
@@ -88,7 +78,7 @@ public class PayUController(
         switch (statePol)
         {
             case "4":
-                await ConfirmPaymentAndReservationAsync(paymentId, transactionId);
+                await paymentConfirmationService.ConfirmAsync(paymentId, transactionId);
                 break;
             case "6":
             case "5":

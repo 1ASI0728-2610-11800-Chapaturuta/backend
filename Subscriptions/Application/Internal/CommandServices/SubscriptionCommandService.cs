@@ -38,7 +38,11 @@ public class SubscriptionCommandService(
                 return subscription;
             }
 
+            // Drop any abandoned PendingPayment attempts so the history doesn't pile up.
+            await CancelStalePendingSubscriptionsAsync(command.FkIdUser);
+
             // Premium flow: persist as PendingPayment first to obtain an id, then register payment.
+            // The subscription stays PendingPayment and is only activated once the payment is confirmed.
             await subscriptionRepository.AddAsync(subscription);
             await unitOfWork.CompleteAsync();
 
@@ -52,7 +56,7 @@ public class SubscriptionCommandService(
             if (paymentId == 0)
                 throw new InvalidOperationException("Could not register payment for subscription");
 
-            subscription.Activate(now, endsAt, paymentId);
+            subscription.AttachPendingPayment(paymentId, now, endsAt);
             subscriptionRepository.Update(subscription);
             await unitOfWork.CompleteAsync();
 
@@ -61,6 +65,33 @@ public class SubscriptionCommandService(
         catch (Exception e)
         {
             throw new Exception($"An error occurred while subscribing to plan: {e.Message}");
+        }
+    }
+
+    public async Task<Subscription?> Handle(ActivateSubscriptionCommand command)
+    {
+        var subscription = await subscriptionRepository.FindByIdAsync(command.SubscriptionId);
+        if (subscription == null) return null;
+
+        // Idempotent: PayU may retry its webhook and the demo confirm may be hit twice.
+        if (subscription.Status == SubscriptionStatus.Active) return subscription;
+
+        var plan = await planRepository.FindByIdAsync(subscription.FkIdPlan);
+        if (plan == null) throw new InvalidOperationException($"Plan {subscription.FkIdPlan} not found");
+
+        var now = DateTime.UtcNow;
+        var endsAt = ComputeEndDate(now, plan.BillingCycle);
+
+        try
+        {
+            subscription.ActivatePending(now, endsAt);
+            subscriptionRepository.Update(subscription);
+            await unitOfWork.CompleteAsync();
+            return subscription;
+        }
+        catch (Exception e)
+        {
+            throw new Exception($"An error occurred while activating subscription: {e.Message}");
         }
     }
 
@@ -159,6 +190,16 @@ public class SubscriptionCommandService(
         catch (Exception e)
         {
             throw new Exception($"An error occurred while consuming discovery quota: {e.Message}");
+        }
+    }
+
+    private async Task CancelStalePendingSubscriptionsAsync(int userId)
+    {
+        var pending = await subscriptionRepository.FindPendingByUserIdAsync(userId);
+        foreach (var stale in pending)
+        {
+            stale.Cancel();
+            subscriptionRepository.Update(stale);
         }
     }
 

@@ -6,6 +6,7 @@ namespace Frock_backend.Subscriptions.Domain.Services;
 public interface ISubscriptionCommandService
 {
     Task<Subscription?> Handle(SubscribeToPlanCommand command);
+    Task<Subscription?> Handle(ActivateSubscriptionCommand command);
     Task<Subscription?> Handle(CancelSubscriptionCommand command);
     Task<Subscription?> Handle(RenewSubscriptionCommand command);
     Task<Subscription?> Handle(ConsumeDiscoveryQuotaCommand command);

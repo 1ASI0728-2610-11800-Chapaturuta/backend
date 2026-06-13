@@ -65,11 +65,14 @@ public class SubscriptionCommandServiceTests
     }
 
     [Fact]
-    public async Task SubscribeToPremiumPlan_Calls_Payments_Facade_And_Activates()
+    public async Task SubscribeToPremiumPlan_Registers_Payment_And_Stays_Pending()
     {
         // ARRANGE
         var plan = CreatePlan(PlanType.Premium, price: 29.90m);
         _planRepository.Setup(p => p.FindByIdAsync(10)).ReturnsAsync(plan);
+        _subscriptionRepository
+            .Setup(s => s.FindPendingByUserIdAsync(1))
+            .ReturnsAsync(Array.Empty<Subscription>());
 
         _paymentsFacade
             .Setup(f => f.RegisterPendingPaymentAsync(
@@ -88,14 +91,59 @@ public class SubscriptionCommandServiceTests
         // ACT
         var result = await service.Handle(command);
 
-        // ASSERT
+        // ASSERT: payment registered, but subscription stays PendingPayment until the payment is confirmed.
         Assert.NotNull(result);
         Assert.NotNull(persisted);
-        Assert.Equal(SubscriptionStatus.Active, result!.Status);
+        Assert.Equal(SubscriptionStatus.PendingPayment, result!.Status);
         Assert.Equal(555, result.FkIdPayment);
         _paymentsFacade.Verify(
             f => f.RegisterPendingPaymentAsync(1, 29.90m, PaymentMethod.Yape, "Subscription", It.IsAny<int>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task ActivateSubscription_Activates_A_Pending_Subscription()
+    {
+        // ARRANGE
+        var plan = CreatePlan(PlanType.Premium, price: 29.90m);
+        var subscription = new Subscription(fkIdUser: 1, fkIdPlan: 10, autoRenew: true);
+        subscription.AttachPendingPayment(paymentId: 555, DateTime.UtcNow, DateTime.UtcNow.AddMonths(1));
+
+        _subscriptionRepository.Setup(s => s.FindByIdAsync(100)).ReturnsAsync(subscription);
+        _planRepository.Setup(p => p.FindByIdAsync(10)).ReturnsAsync(plan);
+
+        var service = CreateService();
+
+        // ACT
+        var result = await service.Handle(new ActivateSubscriptionCommand(100));
+
+        // ASSERT
+        Assert.NotNull(result);
+        Assert.Equal(SubscriptionStatus.Active, result!.Status);
+        Assert.Equal(555, result.FkIdPayment);
+        _subscriptionRepository.Verify(s => s.Update(subscription), Times.Once);
+        _unitOfWork.Verify(u => u.CompleteAsync(), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task ActivateSubscription_Is_Idempotent_When_Already_Active()
+    {
+        // ARRANGE
+        var subscription = new Subscription(fkIdUser: 1, fkIdPlan: 10, autoRenew: true);
+        subscription.Activate(DateTime.UtcNow, DateTime.UtcNow.AddMonths(1), paymentId: 555);
+
+        _subscriptionRepository.Setup(s => s.FindByIdAsync(100)).ReturnsAsync(subscription);
+
+        var service = CreateService();
+
+        // ACT
+        var result = await service.Handle(new ActivateSubscriptionCommand(100));
+
+        // ASSERT: no-op, plan never looked up, nothing persisted.
+        Assert.NotNull(result);
+        Assert.Equal(SubscriptionStatus.Active, result!.Status);
+        _planRepository.Verify(p => p.FindByIdAsync(It.IsAny<int>()), Times.Never);
+        _subscriptionRepository.Verify(s => s.Update(It.IsAny<Subscription>()), Times.Never);
     }
 
     [Fact]

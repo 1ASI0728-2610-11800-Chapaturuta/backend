@@ -19,7 +19,7 @@ public class UserCommandService(
         var user = await userRepository.FindByEmailAsync(command.Email);
 
         if (user == null || !hashingService.VerifyPassword(command.Password, user.PasswordHash))
-            throw new Exception("Invalid email or password");
+            throw new UnauthorizedAccessException("Email o contraseña inválidos.");
 
         var token = tokenService.GenerateToken(user);
 
@@ -29,7 +29,7 @@ public class UserCommandService(
     public async Task Handle(SignUpCommand command)
     {
         if (await userRepository.ExistsByEmail(command.Email))
-            throw new Exception($"Email '{command.Email}' is already registered");
+            throw new InvalidOperationException($"El email '{command.Email}' ya está registrado.");
 
         var hashedPassword = hashingService.HashPassword(command.Password);
         var user = new User(command.Email, command.Username, hashedPassword, command.Role);

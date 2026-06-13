@@ -26,4 +26,12 @@ public class SubscriptionRepository(AppDbContext context) : BaseRepository<Subsc
             .OrderByDescending(s => s.StartsAt)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<Subscription>> FindPendingByUserIdAsync(int userId)
+    {
+        return await Context.Set<Subscription>()
+            .Where(s => s.FkIdUser == userId
+                        && s.Status == SubscriptionStatus.PendingPayment)
+            .ToListAsync();
+    }
 }

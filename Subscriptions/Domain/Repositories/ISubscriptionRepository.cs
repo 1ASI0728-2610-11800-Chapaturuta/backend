@@ -7,4 +7,5 @@ public interface ISubscriptionRepository : IBaseRepository<Subscription>
 {
     Task<Subscription?> FindActiveByUserIdAsync(int userId, DateTime now);
     Task<IEnumerable<Subscription>> FindByUserIdAsync(int userId);
+    Task<IEnumerable<Subscription>> FindPendingByUserIdAsync(int userId);
 }

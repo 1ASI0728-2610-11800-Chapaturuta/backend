@@ -348,9 +348,21 @@ Por defecto **dev y cloud usan el mismo servidor demo público** `https://router
 
 ## Base de datos
 
-MySQL 8.0 con naming convention `snake_case`. EF Core aplica migraciones automaticamente al iniciar (`EnsureCreated`).
+MySQL 8.0 con naming convention `snake_case`. EF Core crea el esquema al iniciar con `EnsureCreated()` (ver [Program.cs](Program.cs)).
 
-Tablas principales: `users`, `driver_profiles`, `companies`, `stops`, `routes`, `route_stops`, `schedules`, `trips`, `ratings`, `collections`, `collection_items`, `notifications`, `regions`, `provinces`, `districts`.
+> ⚠️ **`EnsureCreated()` NO migra.** Solo crea la base y sus tablas la primera vez (cuando la BD aún no existe). Si la BD **ya existe** en el volumen, no agrega columnas ni tablas nuevas al evolucionar el modelo. Esto provoca *schema drift*: p. ej. `Unknown column 'available_seats'` o falta la tabla `reservations`, que se manifiestan como **HTTP 400/500 al crear viajes o reservas**.
+>
+> **Solución en dev tras cambiar el modelo** (recrea el esquema; borra datos):
+> ```bash
+> docker compose down -v          # elimina el volumen frock_mysql_data
+> docker compose up -d --build
+> # o sin bajar todo:
+> docker exec frock-mysql mysql -uroot -proot -e "DROP DATABASE frockdb; CREATE DATABASE frockdb;"
+> docker restart frock-backend
+> ```
+> **Solución durable (recomendada):** migrar a EF Core Migrations (`dotnet ef migrations add ...` + `context.Database.Migrate()` en lugar de `EnsureCreated()`), para aplicar cambios de esquema incrementales sin perder datos.
+
+Tablas principales: `users`, `driver_profiles`, `companies`, `stops`, `routes`, `route_stops`, `schedules`, `trips`, `reservations`, `payments`, `refunds`, `plans`, `subscriptions`, `ratings`, `collections`, `collection_items`, `notifications`, `regions`, `provinces`, `districts`.
 
 ## Docker
 

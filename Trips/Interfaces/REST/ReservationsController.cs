@@ -31,18 +31,14 @@ public class ReservationsController(
     [SwaggerResponse(StatusCodes.Status403Forbidden, "Prohibido - rol insuficiente")]
     public async Task<IActionResult> CreateReservation([FromBody] CreateReservationResource resource)
     {
-        try
-        {
-            var command = CreateReservationCommandFromResourceAssembler.ToCommandFromResource(resource);
-            var reservation = await commandService.Handle(command);
-            if (reservation == null) return BadRequest("Could not create reservation");
-            var reservationResource = ReservationResourceFromEntityAssembler.ToResourceFromEntity(reservation);
-            return CreatedAtAction(nameof(GetReservationById), new { id = reservation.Id }, reservationResource);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        // No blanket try/catch: letting exceptions reach GlobalExceptionHandler preserves the
+        // real status code (e.g. trip not found / insufficient seats -> 409, DB failure -> 500)
+        // instead of masking every failure as a generic 400 that hides the underlying cause.
+        var command = CreateReservationCommandFromResourceAssembler.ToCommandFromResource(resource);
+        var reservation = await commandService.Handle(command);
+        if (reservation == null) return BadRequest("Could not create reservation");
+        var reservationResource = ReservationResourceFromEntityAssembler.ToResourceFromEntity(reservation);
+        return CreatedAtAction(nameof(GetReservationById), new { id = reservation.Id }, reservationResource);
     }
 
     [HttpPost("{id}/confirm")]

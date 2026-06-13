@@ -1,3 +1,4 @@
+using Frock_backend.Payments.Application.Internal.CommandServices;
 using Frock_backend.Payments.Domain.Model.Commands;
 using Frock_backend.Payments.Domain.Model.Queries;
 using Frock_backend.Payments.Domain.Services;
@@ -17,7 +18,8 @@ public class PaymentsController(
     IPaymentCommandService paymentCommandService,
     IPaymentQueryService paymentQueryService,
     IRefundCommandService refundCommandService,
-    IRefundQueryService refundQueryService) : ControllerBase
+    IRefundQueryService refundQueryService,
+    PaymentConfirmationService paymentConfirmationService) : ControllerBase
 {
     [HttpPost]
     [SwaggerOperation(Summary = "Create a payment", OperationId = "CreatePayment")]
@@ -45,8 +47,8 @@ public class PaymentsController(
     {
         try
         {
-            var command = new ConfirmPaymentCommand(id, resource.ExternalReference);
-            var payment = await paymentCommandService.Handle(command);
+            // Confirms the payment and activates the reservation/subscription it backs.
+            var payment = await paymentConfirmationService.ConfirmAsync(id, resource.ExternalReference);
             if (payment == null) return NotFound();
             return Ok(PaymentResourceFromEntityAssembler.ToResourceFromEntity(payment));
         }

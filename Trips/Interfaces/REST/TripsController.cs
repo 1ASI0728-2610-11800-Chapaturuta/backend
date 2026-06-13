@@ -25,18 +25,14 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
     [SwaggerResponse(StatusCodes.Status403Forbidden, "Forbidden - insufficient role")]
     public async Task<IActionResult> CreateTrip([FromBody] CreateTripResource resource)
     {
-        try
-        {
-            var command = new CreateTripCommand(resource.FkIdUser, resource.FkIdDriver, resource.FkIdRoute, resource.FkIdOriginStop, resource.FkIdDestinationStop, resource.Price, resource.AvailableSeats);
-            var trip = await commandService.Handle(command);
-            if (trip == null) return BadRequest("Could not create trip");
-            var tripResource = TripResourceFromEntityAssembler.ToResourceFromEntity(trip);
-            return CreatedAtAction(nameof(GetTripById), new { id = trip.Id }, tripResource);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        // No blanket try/catch: letting exceptions reach GlobalExceptionHandler preserves the
+        // real status code (e.g. a DB save failure -> 500 with the cause logged) instead of
+        // masking every failure as a generic 400 that hides the underlying error.
+        var command = new CreateTripCommand(resource.FkIdUser, resource.FkIdDriver, resource.FkIdRoute, resource.FkIdOriginStop, resource.FkIdDestinationStop, resource.Price, resource.AvailableSeats);
+        var trip = await commandService.Handle(command);
+        if (trip == null) return BadRequest("Could not create trip");
+        var tripResource = TripResourceFromEntityAssembler.ToResourceFromEntity(trip);
+        return CreatedAtAction(nameof(GetTripById), new { id = trip.Id }, tripResource);
     }
 
     [HttpGet("user/{userId}")]

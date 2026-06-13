@@ -45,6 +45,35 @@ public class Subscription
         DiscoveryUsageInCycle = 0;
     }
 
+    /// <summary>
+    ///     Links a pending payment to the subscription and sets its billing window without activating it.
+    ///     The subscription stays in <see cref="SubscriptionStatus.PendingPayment"/> until the payment is confirmed.
+    /// </summary>
+    public void AttachPendingPayment(int paymentId, DateTime starts, DateTime ends)
+    {
+        if (ends <= starts)
+            throw new InvalidOperationException("Subscription end date must be after start date");
+        Status = SubscriptionStatus.PendingPayment;
+        StartsAt = starts;
+        EndsAt = ends;
+        FkIdPayment = paymentId;
+        DiscoveryUsageInCycle = 0;
+    }
+
+    /// <summary>
+    ///     Activates a subscription that is awaiting payment, recomputing its billing window from confirmation time.
+    ///     Idempotent: a subscription that is already active is left untouched.
+    /// </summary>
+    public void ActivatePending(DateTime starts, DateTime ends)
+    {
+        if (Status == SubscriptionStatus.Active) return;
+        if (ends <= starts)
+            throw new InvalidOperationException("Subscription end date must be after start date");
+        Status = SubscriptionStatus.Active;
+        StartsAt = starts;
+        EndsAt = ends;
+    }
+
     public void ActivateFree(DateTime starts, DateTime ends)
     {
         if (ends <= starts)

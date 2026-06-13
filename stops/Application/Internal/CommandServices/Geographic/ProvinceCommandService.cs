@@ -14,7 +14,7 @@ namespace Frock_backend.stops.Application.Internal.CommandServices.Geographic
                 await provinceRepository.FindByIdIntAsync(command.Id);
             if (existingProvince != null)
             {
-                throw new Exception($"Province already exists with that Id.");
+                throw new InvalidOperationException($"Ya existe una provincia con ese Id.");
             }
             var newProvince = new Province(command);
             try

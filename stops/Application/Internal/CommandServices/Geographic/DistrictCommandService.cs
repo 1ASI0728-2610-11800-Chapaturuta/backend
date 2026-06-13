@@ -15,7 +15,7 @@ namespace Frock_backend.stops.Application.Internal.CommandServices.Geographic
                 await districtRepository.FindByIdIntAsync(command.Id);
             if (existingDistrict != null)
             {
-                throw new Exception($"District already exists with that Id.");
+                throw new InvalidOperationException($"Ya existe un distrito con ese Id.");
             }
             var newDistrict = new District(command);
             try
