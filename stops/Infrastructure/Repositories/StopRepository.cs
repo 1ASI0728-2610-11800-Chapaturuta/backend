@@ -18,6 +18,11 @@ namespace Frock_backend.stops.Infrastructure.Repositories
                 .Where(f => f.FkIdDriver == fkIdDriver)
                 .ToListAsync();
         }
+        public async Task<int> CountByFkIdDriverAsync(int fkIdDriver)
+        {
+            return await Context.Set<Stop>()
+                .CountAsync(f => f.FkIdDriver == fkIdDriver);
+        }
         public async Task<IEnumerable<Stop>> FindByFkIdDistrictAsync(int fkIdDistrict)
         {
             return await Context.Set<Stop>()

@@ -52,4 +52,17 @@ public class DriverContextFacade(
         var driver = await driverRepository.FindByFkIdUserAsync(userId);
         return driver?.Id;
     }
+
+    /**
+     * <summary>
+     *     Resolves the IAM user identifier that owns the given driver.
+     * </summary>
+     * <param name="driverId">The driver identifier.</param>
+     * <returns>The IAM user identifier, or null if no driver matches.</returns>
+     */
+    public async Task<int?> FetchUserIdByDriverIdAsync(int driverId)
+    {
+        var driver = await driverRepository.FindByIdAsync(driverId);
+        return driver != null && !driver.IsDeleted ? driver.FkIdUser : null;
+    }
 }

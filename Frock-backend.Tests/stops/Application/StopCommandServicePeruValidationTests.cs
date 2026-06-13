@@ -1,8 +1,10 @@
+using Frock_backend.Driver.Interfaces.ACL;
 using Frock_backend.shared.Domain.Repositories;
 using Frock_backend.stops.Application.Internal.CommandServices;
 using Frock_backend.stops.Domain.Model.Aggregates;
 using Frock_backend.stops.Domain.Model.Commands;
 using Frock_backend.stops.Domain.Repositories;
+using Frock_backend.Subscriptions.Interfaces.ACL;
 using Moq;
 
 namespace Frock_backend.Tests.stops.Application;
@@ -14,8 +16,11 @@ public class StopCommandServicePeruValidationTests
 {
     private readonly Mock<IStopRepository> _repo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDriverContextFacade> _driverFacade = new();
+    private readonly Mock<ISubscriptionsContextFacade> _subscriptionsFacade = new();
 
-    private StopCommandService BuildService() => new(_repo.Object, _unitOfWork.Object);
+    private StopCommandService BuildService() =>
+        new(_repo.Object, _unitOfWork.Object, _driverFacade.Object, _subscriptionsFacade.Object);
 
     private static CreateStopCommand Cmd(double? lat, double? lng) =>
         new(

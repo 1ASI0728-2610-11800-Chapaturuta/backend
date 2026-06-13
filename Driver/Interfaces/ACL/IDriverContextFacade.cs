@@ -17,4 +17,9 @@ public interface IDriverContextFacade
     ///     Resolves the driver identifier from an IAM user identifier.
     /// </summary>
     Task<int?> FetchDriverIdByUserIdAsync(int userId);
+
+    /// <summary>
+    ///     Resolves the IAM user identifier that owns the given driver.
+    /// </summary>
+    Task<int?> FetchUserIdByDriverIdAsync(int driverId);
 }

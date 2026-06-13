@@ -6,6 +6,7 @@ namespace Frock_backend.stops.Domain.Repositories
     public interface IStopRepository : IBaseRepository<Stop>
     {
         Task<IEnumerable<Stop>> FindByFkIdDriverAsync(int fkIdDriver);
+        Task<int> CountByFkIdDriverAsync(int fkIdDriver);
         Task<IEnumerable<Stop>> FindByFkIdDistrictAsync(int fkIdDistrict);
         Task<Stop?> FindByNameAndFkIdDistrictAsync(string name, int fkIdDistrict);
 

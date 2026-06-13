@@ -1,6 +1,7 @@
 using Frock_backend.Subscriptions.Domain.Model.Commands;
 using Frock_backend.Subscriptions.Domain.Model.Queries;
 using Frock_backend.Subscriptions.Domain.Services;
+using Frock_backend.Subscriptions.Interfaces.ACL;
 using Frock_backend.Subscriptions.Interfaces.REST.Resources;
 using Frock_backend.Subscriptions.Interfaces.REST.Transform;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +16,8 @@ namespace Frock_backend.Subscriptions.Interfaces.REST.Controllers;
 [Tags("Subscriptions")]
 public class SubscriptionsController(
     ISubscriptionCommandService subscriptionCommandService,
-    ISubscriptionQueryService subscriptionQueryService) : ControllerBase
+    ISubscriptionQueryService subscriptionQueryService,
+    ISubscriptionsContextFacade subscriptionsContextFacade) : ControllerBase
 {
     [HttpPost]
     [SwaggerOperation(
@@ -96,6 +98,18 @@ public class SubscriptionsController(
         var subscription = await subscriptionQueryService.Handle(new GetActiveSubscriptionByUserIdQuery(userId));
         if (subscription == null) return NotFound();
         return Ok(SubscriptionResourceFromEntityAssembler.ToResourceFromEntity(subscription));
+    }
+
+    [HttpGet("active/premium-status/by-user/{userId:int}")]
+    [SwaggerOperation(
+        Summary = "Indica si el usuario tiene un plan Premium activo",
+        Description = "Devuelve { isPremium } true solo cuando el usuario tiene una suscripcion Premium en estado Active y no vencida.",
+        OperationId = "GetPremiumStatusByUser")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Estado premium del usuario")]
+    public async Task<IActionResult> GetPremiumStatusByUser(int userId)
+    {
+        var isPremium = await subscriptionsContextFacade.HasActivePremiumPlanAsync(userId);
+        return Ok(new { isPremium });
     }
 
     [HttpGet("history/by-user/{userId:int}")]

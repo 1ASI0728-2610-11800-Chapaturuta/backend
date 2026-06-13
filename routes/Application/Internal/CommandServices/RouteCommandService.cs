@@ -1,3 +1,4 @@
+using Frock_backend.Driver.Interfaces.ACL;
 using Frock_backend.routes.Domain.Exceptions;
 using Frock_backend.routes.Domain.Model.Aggregates;
 using Frock_backend.routes.Domain.Model.Commands;
@@ -6,6 +7,7 @@ using Frock_backend.routes.Domain.Repository;
 using Frock_backend.routes.Domain.Service;
 using Frock_backend.shared.Domain.Repositories;
 using Frock_backend.stops.Domain.Repositories;
+using Frock_backend.Subscriptions.Interfaces.ACL;
 
 namespace Frock_backend.routes.Application.Internal.CommandServices
 {
@@ -13,10 +15,16 @@ namespace Frock_backend.routes.Application.Internal.CommandServices
         IRouteRepository routeRepository,
         IUnitOfWork unitOfWork,
         IStopRepository stopRepository,
-        IOsrmRoutingService osrmRoutingService) : IRouteCommandService
+        IOsrmRoutingService osrmRoutingService,
+        IDriverContextFacade driverContextFacade,
+        ISubscriptionsContextFacade subscriptionsContextFacade) : IRouteCommandService
     {
+        private const int BasicMaxRoutes = 15;
+
         public async Task<RouteAggregate?> Handle(CreateFullRouteCommand command)
         {
+            await EnforceRouteLimitAsync(command.StopsIds);
+
             var newRoute = new RouteAggregate(command);
 
             var waypoints = await GetWaypointsForStops(command.StopsIds);
@@ -84,6 +92,28 @@ namespace Frock_backend.routes.Application.Internal.CommandServices
             routeRepository.Update(route);
             await unitOfWork.CompleteAsync();
             return route;
+        }
+
+        // El plan Básico limita las rutas por conductor; Premium es ilimitado.
+        // El conductor de la ruta se infiere del primer paradero.
+        private async Task EnforceRouteLimitAsync(List<int> stopIds)
+        {
+            if (stopIds == null || stopIds.Count == 0) return;
+
+            var firstStop = await stopRepository.FindByIdAsync(stopIds[0]);
+            if (firstStop == null) return;
+
+            var driverId = firstStop.FkIdDriver;
+            var userId = await driverContextFacade.FetchUserIdByDriverIdAsync(driverId);
+            if (userId == null) return;
+
+            var isPremium = await subscriptionsContextFacade.HasActivePremiumPlanAsync(userId.Value);
+            if (isPremium) return;
+
+            var count = await routeRepository.CountByDriverIdAsync(driverId);
+            if (count >= BasicMaxRoutes)
+                throw new InvalidOperationException(
+                    $"Alcanzaste el límite de {BasicMaxRoutes} rutas del plan Básico. Pasa a Premium para rutas ilimitadas.");
         }
 
         private async Task<List<Coordinate>> GetWaypointsForStops(List<int> stopIds)

@@ -6,6 +6,7 @@ namespace Frock_backend.routes.Domain.Repository
     public interface IRouteRepository:IBaseRepository<RouteAggregate>
     {
         Task<List<RouteAggregate>> FindByDriverId(int driverId);
+        Task<int> CountByDriverIdAsync(int driverId);
         Task<List<RouteAggregate>> FindByDistrictId(int districtId);
 
         Task<List<RouteAggregate>> ListRoutes();

@@ -22,6 +22,12 @@ namespace Frock_backend.routes.Infrastructure.Repositories
             .ToListAsync();
         }
 
+        public Task<int> CountByDriverIdAsync(int driverId)
+        {
+            return Context.Set<RouteAggregate>()
+                .CountAsync(r => r.Stops.Any(rs => rs.Stop.FkIdDriver == driverId));
+        }
+
         public Task<List<RouteAggregate>> FindByDistrictId(int districtId)
         {
             return Context.Set<RouteAggregate>()
