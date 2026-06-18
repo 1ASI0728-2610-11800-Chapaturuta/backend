@@ -24,6 +24,7 @@ namespace Frock_backend.routes.Application.Internal.CommandServices
         public async Task<RouteAggregate?> Handle(CreateFullRouteCommand command)
         {
             await EnforceRouteLimitAsync(command.StopsIds);
+            await EnforceNoDuplicateRouteAsync(command.StopsIds);
 
             var newRoute = new RouteAggregate(command);
 
@@ -114,6 +115,30 @@ namespace Frock_backend.routes.Application.Internal.CommandServices
             if (count >= BasicMaxRoutes)
                 throw new InvalidOperationException(
                     $"Alcanzaste el límite de {BasicMaxRoutes} rutas del plan Básico. Pasa a Premium para rutas ilimitadas.");
+        }
+
+        // Rejects creating a route that duplicates one the same driver already owns.
+        // A route has no name; its identity is its ordered stop sequence. Two routes with the
+        // exact same stops in the same order (by the same driver, inferred from the first stop)
+        // are considered duplicates. Reversed order is a different route (opposite direction).
+        private async Task EnforceNoDuplicateRouteAsync(List<int> stopIds)
+        {
+            if (stopIds == null || stopIds.Count == 0) return;
+
+            var firstStop = await stopRepository.FindByIdAsync(stopIds[0]);
+            if (firstStop == null) return;
+
+            var existingRoutes = await routeRepository.FindByDriverId(firstStop.FkIdDriver);
+            foreach (var route in existingRoutes)
+            {
+                var existingSequence = route.Stops
+                    .OrderBy(rs => rs.Id)
+                    .Select(rs => rs.FkStopId)
+                    .ToList();
+                if (existingSequence.SequenceEqual(stopIds))
+                    throw new InvalidOperationException(
+                        "Ya tienes una ruta con exactamente la misma secuencia de paraderos.");
+            }
         }
 
         private async Task<List<Coordinate>> GetWaypointsForStops(List<int> stopIds)

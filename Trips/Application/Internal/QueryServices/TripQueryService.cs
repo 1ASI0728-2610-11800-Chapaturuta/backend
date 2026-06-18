@@ -56,6 +56,18 @@ public class TripQueryService(ITripRepository tripRepository, AppDbContext conte
         return await BuildHistoryAsync(trips);
     }
 
+    public async Task<IEnumerable<TripHistoryView>> Handle(GetJoinableTripsQuery query)
+    {
+        // Published trips a passenger can still board: pending and with free seats.
+        // Optionally narrowed to a single route (the route-detail "join" flow).
+        var trips = await context.Set<Trip>()
+            .Where(t => t.Status == TripStatus.Pending && t.AvailableSeats > 0)
+            .Where(t => query.RouteId == null || t.FkIdRoute == query.RouteId)
+            .OrderByDescending(t => t.StartTime)
+            .ToListAsync();
+        return await BuildHistoryAsync(trips);
+    }
+
     // Resolves names with bulk lookups (no N+1).
     private async Task<IEnumerable<TripHistoryView>> BuildHistoryAsync(List<Trip> trips)
     {
@@ -120,7 +132,9 @@ public class TripQueryService(ITripRepository tripRepository, AppDbContext conte
                 t.StartTime,
                 t.EndTime,
                 t.Price,
-                t.Status.ToString());
+                t.Status.ToString(),
+                t.FkIdRoute,
+                t.AvailableSeats);
         }).ToList();
     }
 }

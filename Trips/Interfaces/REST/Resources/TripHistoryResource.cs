@@ -10,4 +10,6 @@ public record TripHistoryResource(
     DateTime StartTime,
     DateTime? EndTime,
     decimal? Price,
-    string Status);
+    string Status,
+    int FkIdRoute,
+    int AvailableSeats);

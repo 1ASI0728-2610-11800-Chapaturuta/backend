@@ -85,6 +85,34 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
         return Ok(resources);
     }
 
+    [HttpPost("publish")]
+    [Authorize(Role.Driver, Role.Admin)]
+    [SwaggerOperation(Summary = "Publish a shared trip with seat capacity", OperationId = "PublishTrip")]
+    [SwaggerResponse(StatusCodes.Status201Created, "Trip published", typeof(TripResource))]
+    public async Task<IActionResult> PublishTrip([FromBody] PublishTripResource resource)
+    {
+        // Reuses CreateTripCommand: a published trip is just a trip with a driver and a seat
+        // capacity (AvailableSeats), which passengers then draw down by reserving.
+        var command = new CreateTripCommand(
+            resource.FkIdUser, resource.FkIdDriver, resource.FkIdRoute,
+            resource.FkIdOriginStop, resource.FkIdDestinationStop, resource.Price, resource.Seats);
+        var trip = await commandService.Handle(command);
+        if (trip == null) return BadRequest("Could not publish trip");
+        var tripResource = TripResourceFromEntityAssembler.ToResourceFromEntity(trip);
+        return CreatedAtAction(nameof(GetTripById), new { id = trip.Id }, tripResource);
+    }
+
+    [HttpGet("joinable")]
+    [Authorize]
+    [SwaggerOperation(Summary = "Get published trips a passenger can still join (pending + free seats)", OperationId = "GetJoinableTrips")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Joinable trips found", typeof(IEnumerable<TripHistoryResource>))]
+    public async Task<IActionResult> GetJoinableTrips([FromQuery] int? routeId)
+    {
+        var views = await queryService.Handle(new GetJoinableTripsQuery(routeId));
+        var resources = views.Select(TripHistoryResourceFromViewAssembler.ToResourceFromView);
+        return Ok(resources);
+    }
+
     [HttpGet("available")]
     [Authorize(Role.Driver, Role.Admin)]
     [SwaggerOperation(Summary = "Get pending trips with no driver assigned (claimable pool)", OperationId = "GetAvailableTrips")]
