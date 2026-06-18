@@ -16,6 +16,7 @@ namespace Frock_backend.Payments.Application.Internal.CommandServices;
 /// </summary>
 public class PaymentConfirmationService(
     IPaymentCommandService paymentCommandService,
+    IReservationNotificationService reservationNotificationService,
     ITripsContextFacade tripsContextFacade,
     ISubscriptionsContextFacade subscriptionsContextFacade)
 {
@@ -32,7 +33,10 @@ public class PaymentConfirmationService(
         if (payment == null) return null;
 
         if (string.Equals(payment.ReferenceType, ReservationReferenceType, StringComparison.OrdinalIgnoreCase))
+        {
             await tripsContextFacade.ConfirmReservationAsync(payment.ReferenceId);
+            await reservationNotificationService.NotifyReservationConfirmedAsync(payment);
+        }
         else if (string.Equals(payment.ReferenceType, SubscriptionReferenceType, StringComparison.OrdinalIgnoreCase))
             await subscriptionsContextFacade.ActivateSubscriptionAsync(payment.ReferenceId);
 

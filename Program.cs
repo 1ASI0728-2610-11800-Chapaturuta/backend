@@ -41,6 +41,7 @@ using Frock_backend.Payments.Domain.Repositories;
 using Frock_backend.Payments.Domain.Services;
 using Frock_backend.Payments.Domain.Services.Gateways;
 using Frock_backend.Payments.Application.Internal.CommandServices;
+using Frock_backend.Payments.Application.Internal.OutboundServices;
 using Frock_backend.Payments.Application.Internal.QueryServices;
 using Frock_backend.Payments.Infrastructure.Repositories;
 using Frock_backend.Payments.Infrastructure.ExternalServices.Gateways;
@@ -266,6 +267,7 @@ builder.Services.AddScoped<PaymentGatewayFactory>();
 builder.Services.AddScoped<IPaymentsContextFacade, PaymentsContextFacade>();
 // Orchestrates payment confirmation -> reservation/subscription activation (no DI cycle).
 builder.Services.AddScoped<PaymentConfirmationService>();
+builder.Services.AddHttpClient<IReservationNotificationService, N8NReservationNotificationService>();
 
 // ============================================================
 // Dependency Injection — Subscriptions BC (wired by F4)
