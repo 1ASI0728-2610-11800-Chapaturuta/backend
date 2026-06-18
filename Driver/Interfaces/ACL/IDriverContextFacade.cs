@@ -22,4 +22,15 @@ public interface IDriverContextFacade
     ///     Resolves the IAM user identifier that owns the given driver.
     /// </summary>
     Task<int?> FetchUserIdByDriverIdAsync(int driverId);
+
+    /// <summary>
+    ///     Resolves the full name of a driver given its identifier. Returns null when no driver matches.
+    /// </summary>
+    Task<string?> FetchDriverNameByDriverIdAsync(int driverId);
+
+    /// <summary>
+    ///     Bulk-resolves driver full names keyed by driver identifier, avoiding N+1 lookups.
+    ///     Only existing (non soft-deleted) drivers are present in the result.
+    /// </summary>
+    Task<IReadOnlyDictionary<int, string>> FetchDriverNamesByDriverIdsAsync(IEnumerable<int> driverIds);
 }

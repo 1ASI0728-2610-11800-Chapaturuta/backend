@@ -65,4 +65,31 @@ public class DriverContextFacade(
         var driver = await driverRepository.FindByIdAsync(driverId);
         return driver != null && !driver.IsDeleted ? driver.FkIdUser : null;
     }
+
+    /**
+     * <summary>
+     *     Resolves the full name (first + last) of the driver with the given identifier.
+     * </summary>
+     * <param name="driverId">The driver identifier.</param>
+     * <returns>The driver's full name, or null if no existing driver matches.</returns>
+     */
+    public async Task<string?> FetchDriverNameByDriverIdAsync(int driverId)
+    {
+        var driver = await driverRepository.FindByIdAsync(driverId);
+        if (driver == null || driver.IsDeleted) return null;
+        return $"{driver.FirstName} {driver.LastName}".Trim();
+    }
+
+    /**
+     * <summary>
+     *     Bulk-resolves driver full names keyed by driver identifier in a single query.
+     * </summary>
+     * <param name="driverIds">The driver identifiers to resolve.</param>
+     * <returns>A dictionary mapping driver id to full name for every existing driver.</returns>
+     */
+    public async Task<IReadOnlyDictionary<int, string>> FetchDriverNamesByDriverIdsAsync(IEnumerable<int> driverIds)
+    {
+        var drivers = await driverRepository.FindByIdsAsync(driverIds);
+        return drivers.ToDictionary(d => d.Id, d => $"{d.FirstName} {d.LastName}".Trim());
+    }
 }

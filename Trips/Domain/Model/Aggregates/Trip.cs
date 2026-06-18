@@ -31,6 +31,15 @@ public class Trip
         AvailableSeats = availableSeats;
     }
 
+    public void AssignDriver(int driverId)
+    {
+        if (Status != TripStatus.Pending)
+            throw new InvalidOperationException($"Cannot assign a driver to a trip with status {Status}");
+        if (FkIdDriver is not null)
+            throw new InvalidOperationException("Trip already has a driver assigned");
+        FkIdDriver = driverId;
+    }
+
     public void Start()
     {
         Status = TripStatus.InProgress;

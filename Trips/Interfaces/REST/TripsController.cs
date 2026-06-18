@@ -85,6 +85,37 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
         return Ok(resources);
     }
 
+    [HttpGet("available")]
+    [Authorize(Role.Driver, Role.Admin)]
+    [SwaggerOperation(Summary = "Get pending trips with no driver assigned (claimable pool)", OperationId = "GetAvailableTrips")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Available trips found", typeof(IEnumerable<TripHistoryResource>))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
+    public async Task<IActionResult> GetAvailableTrips()
+    {
+        var views = await queryService.Handle(new GetAvailableTripsQuery());
+        var resources = views.Select(TripHistoryResourceFromViewAssembler.ToResourceFromView);
+        return Ok(resources);
+    }
+
+    [HttpPost("{id}/assign-driver")]
+    [Authorize(Role.Driver, Role.Admin)]
+    [SwaggerOperation(Summary = "Assign (claim) a driver to a trip", OperationId = "AssignDriverToTrip")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Driver assigned", typeof(TripResource))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Trip not found")]
+    public async Task<IActionResult> AssignDriver(int id, [FromBody] AssignDriverResource resource)
+    {
+        try
+        {
+            var trip = await commandService.Handle(new AssignDriverToTripCommand(id, resource.DriverId));
+            if (trip == null) return NotFound();
+            return Ok(TripResourceFromEntityAssembler.ToResourceFromEntity(trip));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("{id}/start")]
     [Authorize(Role.Driver, Role.Admin)]
     [SwaggerOperation(Summary = "Start a trip", OperationId = "StartTrip")]

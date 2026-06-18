@@ -1,3 +1,4 @@
+using Frock_backend.IAM.Domain.Repositories;
 using Frock_backend.Payments.Interfaces.ACL;
 using Frock_backend.Trips.Domain.Model.Aggregates;
 using Frock_backend.Trips.Domain.Model.Commands;
@@ -11,11 +12,17 @@ namespace Frock_backend.Trips.Application.Internal.CommandServices;
 public class ReservationCommandService(
     IReservationRepository reservationRepository,
     ITripRepository tripRepository,
+    IUserRepository userRepository,
     IPaymentsContextFacade paymentsContextFacade,
     IUnitOfWork unitOfWork) : IReservationCommandService
 {
     public async Task<Reservation?> Handle(CreateReservationCommand command)
     {
+        // Defensive validation: missing references would otherwise surface as a
+        // MySQL FK-constraint failure (HTTP 500). KeyNotFoundException → 404.
+        if (await userRepository.FindByIdAsync(command.FkIdUser) is null)
+            throw new KeyNotFoundException($"User with id {command.FkIdUser} not found");
+
         var trip = await tripRepository.FindByIdAsync(command.FkIdTrip);
         if (trip == null)
             throw new InvalidOperationException($"Trip with id {command.FkIdTrip} not found");

@@ -7,6 +7,7 @@ namespace Frock_backend.Driver.Domain.Repositories;
 public interface IDriverRepository : IBaseRepository<DriverAggregate>
 {
     Task<DriverAggregate?> FindByFkIdUserAsync(int fkIdUser);
+    Task<IEnumerable<DriverAggregate>> FindByIdsAsync(IEnumerable<int> ids);
     Task<IEnumerable<DriverAggregate>> FindByVehicleTypeAsync(VehicleType vehicleType);
     Task<IEnumerable<DriverAggregate>> FindAvailableByDayOfWeekAsync(DayOfWeek day);
 }

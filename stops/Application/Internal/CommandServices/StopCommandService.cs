@@ -1,11 +1,14 @@
 ﻿using Frock_backend.Driver.Interfaces.ACL;
+using Frock_backend.routes.Domain.Model.Entities;
 using Frock_backend.shared.Domain.Geo;
 using Frock_backend.shared.Domain.Repositories;
+using Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration;
 using Frock_backend.stops.Domain.Model.Aggregates;
 using Frock_backend.stops.Domain.Model.Commands;
 using Frock_backend.stops.Domain.Repositories;
 using Frock_backend.stops.Domain.Services;
 using Frock_backend.Subscriptions.Interfaces.ACL;
+using Microsoft.EntityFrameworkCore;
 
 namespace Frock_backend.stops.Application.Internal.CommandServices
 {
@@ -24,6 +27,7 @@ namespace Frock_backend.stops.Application.Internal.CommandServices
     public class StopCommandService(
         IStopRepository stopRepository,
         IUnitOfWork unitOfWork,
+        AppDbContext context,
         IDriverContextFacade driverContextFacade,
         ISubscriptionsContextFacade subscriptionsContextFacade) : IStopCommandService
     {
@@ -122,6 +126,18 @@ namespace Frock_backend.stops.Application.Internal.CommandServices
 
             try
             {
+                // Clean up the route_stops join rows that reference this stop BEFORE deleting it.
+                // The Stop ← RoutesStops FK is configured with DeleteBehavior.Restrict, so leaving
+                // these rows behind would (a) fail the delete with a FK-constraint error, and
+                // (b) leave routes pointing at a phantom stop (the root cause of later HTTP 500s
+                // when creating trips). We remove the join rows rather than blocking the delete so
+                // the normal "delete a stop" flow keeps working; the route simply loses that stop.
+                var routeStops = await context.Set<RoutesStops>()
+                    .Where(rs => rs.FkStopId == stopToDelete.Id)
+                    .ToListAsync();
+                if (routeStops.Count > 0)
+                    context.Set<RoutesStops>().RemoveRange(routeStops);
+
                 stopRepository.Remove(stopToDelete); // Remove the fetched entity
                 await unitOfWork.CompleteAsync();
                 return stopToDelete; // Return the (now conceptually deleted) entity as confirmation

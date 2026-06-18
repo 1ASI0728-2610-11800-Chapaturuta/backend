@@ -10,4 +10,5 @@ public interface ITripQueryService
     Task<IEnumerable<Trip>> Handle(GetTripsByDriverIdQuery query);
     Task<IEnumerable<TripHistoryView>> Handle(GetTripHistoryByUserIdQuery query);
     Task<IEnumerable<TripHistoryView>> Handle(GetTripHistoryByDriverIdQuery query);
+    Task<IEnumerable<TripHistoryView>> Handle(GetAvailableTripsQuery query);
 }

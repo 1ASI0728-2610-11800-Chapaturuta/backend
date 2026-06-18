@@ -16,6 +16,14 @@ public class DriverRepository(AppDbContext context) : BaseRepository<DriverAggre
             .FirstOrDefaultAsync(d => d.FkIdUser == fkIdUser && !d.IsDeleted);
     }
 
+    public async Task<IEnumerable<DriverAggregate>> FindByIdsAsync(IEnumerable<int> ids)
+    {
+        var idSet = ids.ToHashSet();
+        return await Context.Set<DriverAggregate>()
+            .Where(d => idSet.Contains(d.Id) && !d.IsDeleted)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<DriverAggregate>> FindByVehicleTypeAsync(VehicleType vehicleType)
     {
         return await Context.Set<DriverAggregate>()
