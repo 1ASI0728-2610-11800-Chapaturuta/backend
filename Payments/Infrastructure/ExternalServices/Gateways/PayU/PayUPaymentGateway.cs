@@ -25,7 +25,7 @@ public class PayUPaymentGateway(
     {
         var referenceCode = ReferenceCodeFor(payment);
         var amount = payment.Amount.Amount;
-        var currency = payment.Amount.Currency;
+        var currency = ResolveCurrency(payment);
 
         var request = new PayURequest
         {
@@ -36,7 +36,7 @@ public class PayUPaymentGateway(
             {
                 Type = "AUTHORIZATION_AND_CAPTURE",
                 PaymentMethod = input.PaymentMethodBrand,
-                PaymentCountry = "PE",
+                PaymentCountry = _settings.PaymentCountry,
                 CreditCard = new PayUCreditCard
                 {
                     Number = input.CardNumber,
@@ -78,6 +78,8 @@ public class PayUPaymentGateway(
             return new GatewayResult(false, null, "Payment has no PayU transaction id to refund");
 
         var isPartial = amount < payment.Amount.Amount;
+        var referenceCode = ReferenceCodeFor(payment);
+        var currency = ResolveCurrency(payment);
 
         var request = new PayURequest
         {
@@ -92,10 +94,10 @@ public class PayUPaymentGateway(
                 Order = new PayUOrder
                 {
                     AccountId = _settings.AccountId,
-                    ReferenceCode = ReferenceCodeFor(payment),
+                    ReferenceCode = referenceCode,
                     Language = "es",
-                    Signature = PayUSignature.ForRequest(_settings.ApiKey, _settings.MerchantId, ReferenceCodeFor(payment), amount, payment.Amount.Currency),
-                    AdditionalValues = new PayUAdditionalValues { TxValue = new PayUMoney { Value = amount, Currency = payment.Amount.Currency } }
+                    Signature = PayUSignature.ForRequest(_settings.ApiKey, _settings.MerchantId, referenceCode, amount, currency),
+                    AdditionalValues = new PayUAdditionalValues { TxValue = new PayUMoney { Value = amount, Currency = currency } }
                 }
             }
         };
@@ -147,5 +149,14 @@ public class PayUPaymentGateway(
         }
     }
 
-    private static string ReferenceCodeFor(Payment payment) => $"FROCK-PAY-{payment.Id}";
+    // PayU requires a unique referenceCode per order: reusing one yields INVALID_TRANSACTION
+    // ("la orden ... ya se encuentra registrada"). The payment id stays the LAST '-' segment so
+    // the confirmation webhook can still recover it (see PayUController.TryExtractPaymentId).
+    private static string ReferenceCodeFor(Payment payment) =>
+        $"FROCK-{DateTime.UtcNow.Ticks:x}-{payment.Id}";
+
+    // Currency actually sent to PayU. Empty override => use the payment's own currency.
+    // Lets the sandbox (Colombia account: COP) approve while production keeps the real currency.
+    private string ResolveCurrency(Payment payment) =>
+        string.IsNullOrWhiteSpace(_settings.CurrencyOverride) ? payment.Amount.Currency : _settings.CurrencyOverride;
 }
