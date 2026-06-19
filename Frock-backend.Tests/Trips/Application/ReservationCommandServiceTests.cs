@@ -1,3 +1,5 @@
+using Frock_backend.IAM.Domain.Model.Aggregates;
+using Frock_backend.IAM.Domain.Repositories;
 using Frock_backend.Payments.Domain.Model.ValueObjects;
 using Frock_backend.Payments.Interfaces.ACL;
 using Frock_backend.shared.Domain.Repositories;
@@ -6,6 +8,7 @@ using Frock_backend.Trips.Domain.Model.Aggregates;
 using Frock_backend.Trips.Domain.Model.Commands;
 using Frock_backend.Trips.Domain.Model.ValueObjects;
 using Frock_backend.Trips.Domain.Repositories;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Frock_backend.Tests.Trips.Application;
@@ -14,14 +17,18 @@ public class ReservationCommandServiceTests
 {
     private readonly Mock<IReservationRepository> _reservationRepo = new(MockBehavior.Strict);
     private readonly Mock<ITripRepository> _tripRepo = new(MockBehavior.Strict);
+    private readonly Mock<IUserRepository> _userRepo = new(MockBehavior.Strict);
     private readonly Mock<IPaymentsContextFacade> _paymentsFacade = new(MockBehavior.Strict);
     private readonly Mock<IUnitOfWork> _unitOfWork = new(MockBehavior.Strict);
+    private const int HoldMinutes = 15;
 
     private ReservationCommandService BuildService() => new(
         _reservationRepo.Object,
         _tripRepo.Object,
+        _userRepo.Object,
         _paymentsFacade.Object,
-        _unitOfWork.Object);
+        _unitOfWork.Object,
+        Options.Create(new ReservationHoldOptions { PaymentHoldMinutes = HoldMinutes }));
 
     private static Trip NewTrip(int availableSeats, decimal price = 10.0m) =>
         new(
@@ -37,6 +44,7 @@ public class ReservationCommandServiceTests
     public async Task CreateReservation_Throws_When_Trip_Not_Found()
     {
         // ARRANGE
+        _userRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(new User());
         _tripRepo.Setup(r => r.FindByIdAsync(99)).ReturnsAsync((Trip?)null);
         var service = BuildService();
         var cmd = new CreateReservationCommand(
@@ -54,14 +62,16 @@ public class ReservationCommandServiceTests
     {
         // ARRANGE
         var trip = NewTrip(availableSeats: 1);
+        _userRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(new User());
         _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id)).ReturnsAsync(new List<Reservation>());
         var service = BuildService();
         var cmd = new CreateReservationCommand(
             FkIdUser: 1, FkIdTrip: 1, DocumentType: DocumentType.Dni,
             DocumentNumber: "12345678", Seats: 2, PaymentMethod: PaymentMethod.Yape);
 
         // ACT + ASSERT
-        // Trip.ReserveSeats throws InvalidOperationException; happens BEFORE the try/catch, so it propagates.
+        // Trip.ReserveSeats throws InvalidOperationException when seats are insufficient; it propagates.
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.Handle(cmd));
         Assert.Equal(1, trip.AvailableSeats); // unchanged
     }
@@ -71,7 +81,9 @@ public class ReservationCommandServiceTests
     {
         // ARRANGE
         var trip = NewTrip(availableSeats: 5, price: 10.0m);
+        _userRepo.Setup(r => r.FindByIdAsync(42)).ReturnsAsync(new User());
         _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id)).ReturnsAsync(new List<Reservation>());
 
         Reservation? captured = null;
         _reservationRepo.Setup(r => r.AddAsync(It.IsAny<Reservation>()))
@@ -109,6 +121,117 @@ public class ReservationCommandServiceTests
         _reservationRepo.Verify(r => r.AddAsync(It.IsAny<Reservation>()), Times.Once);
         _reservationRepo.Verify(r => r.Update(It.IsAny<Reservation>()), Times.Once);
         _unitOfWork.Verify(u => u.CompleteAsync(), Times.Exactly(2));
+    }
+
+    private static Reservation PendingHold(int userId, int tripId, int seats, int paymentId, DateTime reservedAt)
+    {
+        var r = new Reservation(userId, tripId, DocumentType.Dni, "12345678", seats) { ReservedAt = reservedAt };
+        r.AttachPayment(paymentId);
+        return r;
+    }
+
+    [Fact]
+    public async Task CreateReservation_Releases_Expired_Hold_Before_Reserving()
+    {
+        // ARRANGE: a different user's pending hold whose 15-min payment window elapsed (reserved 20 min ago).
+        var expired = PendingHold(userId: 7, tripId: 1, seats: 2, paymentId: 500,
+            reservedAt: DateTime.UtcNow.AddMinutes(-20));
+        var trip = NewTrip(availableSeats: 0, price: 10.0m); // fully held by the expired reservation
+
+        _userRepo.Setup(r => r.FindByIdAsync(42)).ReturnsAsync(new User());
+        _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id))
+            .ReturnsAsync(new List<Reservation> { expired });
+        _reservationRepo.Setup(r => r.AddAsync(It.IsAny<Reservation>())).Returns(Task.CompletedTask);
+        _reservationRepo.Setup(r => r.Update(It.IsAny<Reservation>()));
+        _unitOfWork.Setup(u => u.CompleteAsync()).Returns(Task.CompletedTask);
+        _paymentsFacade.Setup(p => p.FailPaymentAsync(500)).Returns(Task.CompletedTask);
+        _paymentsFacade
+            .Setup(p => p.RegisterPendingPaymentAsync(42, 10m, PaymentMethod.Yape, "Reservation", It.IsAny<int>()))
+            .ReturnsAsync(123);
+
+        var service = BuildService();
+        var cmd = new CreateReservationCommand(
+            FkIdUser: 42, FkIdTrip: 1, DocumentType: DocumentType.Dni,
+            DocumentNumber: "12345678", Seats: 1, PaymentMethod: PaymentMethod.Yape);
+
+        // ACT
+        var result = await service.Handle(cmd);
+
+        // ASSERT
+        Assert.NotNull(result);
+        Assert.Equal(ReservationStatus.Expired, expired.Status);   // hold released
+        Assert.Equal(1, trip.AvailableSeats);                      // 0 -> +2 (released) -> -1 (new)
+        _paymentsFacade.Verify(p => p.FailPaymentAsync(500), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateReservation_Supersedes_Same_User_Pending_Hold()
+    {
+        // ARRANGE: same user already has a still-fresh (not expired) pending hold on this trip.
+        var previous = PendingHold(userId: 42, tripId: 1, seats: 2, paymentId: 600,
+            reservedAt: DateTime.UtcNow); // within the window
+        var trip = NewTrip(availableSeats: 0, price: 10.0m);
+
+        _userRepo.Setup(r => r.FindByIdAsync(42)).ReturnsAsync(new User());
+        _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id))
+            .ReturnsAsync(new List<Reservation> { previous });
+        _reservationRepo.Setup(r => r.AddAsync(It.IsAny<Reservation>())).Returns(Task.CompletedTask);
+        _reservationRepo.Setup(r => r.Update(It.IsAny<Reservation>()));
+        _unitOfWork.Setup(u => u.CompleteAsync()).Returns(Task.CompletedTask);
+        _paymentsFacade.Setup(p => p.FailPaymentAsync(600)).Returns(Task.CompletedTask);
+        _paymentsFacade
+            .Setup(p => p.RegisterPendingPaymentAsync(42, 10m, PaymentMethod.Yape, "Reservation", It.IsAny<int>()))
+            .ReturnsAsync(123);
+
+        var service = BuildService();
+        var cmd = new CreateReservationCommand(
+            FkIdUser: 42, FkIdTrip: 1, DocumentType: DocumentType.Dni,
+            DocumentNumber: "12345678", Seats: 1, PaymentMethod: PaymentMethod.Yape);
+
+        // ACT
+        var result = await service.Handle(cmd);
+
+        // ASSERT: the prior unpaid hold is released so the retry does not stack a second hold.
+        Assert.NotNull(result);
+        Assert.Equal(ReservationStatus.Expired, previous.Status);
+        Assert.Equal(1, trip.AvailableSeats);                      // 0 -> +2 -> -1
+        _paymentsFacade.Verify(p => p.FailPaymentAsync(600), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateReservation_Keeps_Other_Users_Active_Hold()
+    {
+        // ARRANGE: another user holds a fresh, unexpired reservation — it must NOT be released.
+        var otherActive = PendingHold(userId: 99, tripId: 1, seats: 1, paymentId: 700,
+            reservedAt: DateTime.UtcNow);
+        var trip = NewTrip(availableSeats: 1, price: 10.0m); // 1 free seat left besides the other hold
+
+        _userRepo.Setup(r => r.FindByIdAsync(42)).ReturnsAsync(new User());
+        _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id))
+            .ReturnsAsync(new List<Reservation> { otherActive });
+        _reservationRepo.Setup(r => r.AddAsync(It.IsAny<Reservation>())).Returns(Task.CompletedTask);
+        _reservationRepo.Setup(r => r.Update(It.IsAny<Reservation>()));
+        _unitOfWork.Setup(u => u.CompleteAsync()).Returns(Task.CompletedTask);
+        _paymentsFacade
+            .Setup(p => p.RegisterPendingPaymentAsync(42, 10m, PaymentMethod.Yape, "Reservation", It.IsAny<int>()))
+            .ReturnsAsync(123);
+
+        var service = BuildService();
+        var cmd = new CreateReservationCommand(
+            FkIdUser: 42, FkIdTrip: 1, DocumentType: DocumentType.Dni,
+            DocumentNumber: "12345678", Seats: 1, PaymentMethod: PaymentMethod.Yape);
+
+        // ACT
+        var result = await service.Handle(cmd);
+
+        // ASSERT
+        Assert.NotNull(result);
+        Assert.Equal(ReservationStatus.Pending, otherActive.Status);   // untouched
+        Assert.Equal(0, trip.AvailableSeats);                          // 1 -> -1 (new), other hold intact
+        _paymentsFacade.Verify(p => p.FailPaymentAsync(It.IsAny<int>()), Times.Never);
     }
 
     [Fact]

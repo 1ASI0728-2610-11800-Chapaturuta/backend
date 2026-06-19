@@ -6,5 +6,6 @@ public enum ReservationStatus
     Confirmed,
     Cancelled,
     Completed,
-    Refunded
+    Refunded,
+    Expired
 }

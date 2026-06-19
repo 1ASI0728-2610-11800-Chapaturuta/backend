@@ -55,6 +55,28 @@ public class Reservation
         Status = ReservationStatus.Cancelled;
     }
 
+    /// <summary>
+    ///     The deadline before which the pending payment must be completed, derived from when the
+    ///     reservation was made plus the configured hold window. Past this point the seat hold expires.
+    /// </summary>
+    public DateTime PaymentDeadline(int holdMinutes) => ReservedAt.AddMinutes(holdMinutes);
+
+    /// <summary>
+    ///     True when this is still a pending (unpaid) reservation whose payment hold window has elapsed.
+    /// </summary>
+    public bool IsPaymentExpired(DateTime utcNow, int holdMinutes) =>
+        Status == ReservationStatus.Pending && PaymentDeadline(holdMinutes) < utcNow;
+
+    /// <summary>
+    ///     Releases an unpaid hold. Only a pending reservation can expire; confirmed/cancelled stay put.
+    /// </summary>
+    public void Expire()
+    {
+        if (Status != ReservationStatus.Pending)
+            throw new InvalidOperationException($"Cannot expire a reservation with status {Status}");
+        Status = ReservationStatus.Expired;
+    }
+
     public void Complete()
     {
         Status = ReservationStatus.Completed;

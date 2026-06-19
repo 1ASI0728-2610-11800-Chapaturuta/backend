@@ -1,10 +1,12 @@
 using Frock_backend.Driver.Interfaces.ACL;
 using Frock_backend.shared.Domain.Repositories;
+using Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration;
 using Frock_backend.stops.Application.Internal.CommandServices;
 using Frock_backend.stops.Domain.Model.Aggregates;
 using Frock_backend.stops.Domain.Model.Commands;
 using Frock_backend.stops.Domain.Repositories;
 using Frock_backend.Subscriptions.Interfaces.ACL;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 
 namespace Frock_backend.Tests.stops.Application;
@@ -19,8 +21,13 @@ public class StopCommandServicePeruValidationTests
     private readonly Mock<IDriverContextFacade> _driverFacade = new();
     private readonly Mock<ISubscriptionsContextFacade> _subscriptionsFacade = new();
 
+    private static AppDbContext NewContext() =>
+        new(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: System.Guid.NewGuid().ToString())
+            .Options);
+
     private StopCommandService BuildService() =>
-        new(_repo.Object, _unitOfWork.Object, _driverFacade.Object, _subscriptionsFacade.Object);
+        new(_repo.Object, _unitOfWork.Object, NewContext(), _driverFacade.Object, _subscriptionsFacade.Object);
 
     private static CreateStopCommand Cmd(double? lat, double? lng) =>
         new(

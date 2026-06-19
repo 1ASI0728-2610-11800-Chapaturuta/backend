@@ -54,4 +54,24 @@ public class PaymentsContextFacade(
         var refund = await refundCommandService.Handle(command);
         return refund?.Id ?? 0;
     }
+
+    /**
+     * <summary>
+     *     Marks a pending payment as failed. Best-effort: swallows the invalid-transition error
+     *     for payments that are no longer pending, so callers (e.g. expiring a reservation hold)
+     *     never fail because the payment moved on independently.
+     * </summary>
+     * <param name="paymentId">The ID of the payment to fail.</param>
+     */
+    public async Task FailPaymentAsync(int paymentId)
+    {
+        try
+        {
+            await paymentCommandService.Handle(new FailPaymentCommand(paymentId));
+        }
+        catch (InvalidOperationException)
+        {
+            // Payment was not pending (already confirmed/failed). Nothing to do.
+        }
+    }
 }

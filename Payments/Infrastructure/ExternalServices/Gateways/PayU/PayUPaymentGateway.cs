@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Frock_backend.Payments.Domain.Model.Aggregates;
 using Frock_backend.Payments.Domain.Services.Gateways;
 using Microsoft.Extensions.Options;
@@ -108,7 +110,15 @@ public class PayUPaymentGateway(
     {
         try
         {
-            using var response = await httpClient.PostAsJsonAsync(_settings.ApiUrl, request);
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _settings.ApiUrl)
+            {
+                Content = JsonContent.Create(request)
+            };
+            // PayU only returns JSON when the client explicitly asks for it; without this header
+            // it may reply with XML/HTML and ReadFromJsonAsync would throw (HTTP 500).
+            httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            using var response = await httpClient.SendAsync(httpRequest);
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning("PayU HTTP {Status} for ref {Ref}", (int)response.StatusCode, request.Transaction.Order.ReferenceCode);
@@ -128,10 +138,12 @@ public class PayUPaymentGateway(
             var externalRef = tr.OrderId?.ToString(CultureInfo.InvariantCulture) ?? tr.TransactionId;
             return new GatewayResult(ok, externalRef, tr.ResponseMessage ?? tr.State);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or NotSupportedException or InvalidOperationException)
         {
-            logger.LogError(ex, "PayU HTTP failure");
-            return new GatewayResult(false, null, $"PayU transport error: {ex.Message}");
+            // Transport (network/timeout), malformed body, or unexpected content-type from PayU.
+            // Surface as a handled gateway failure (-> HTTP 400) instead of crashing the request (HTTP 500).
+            logger.LogError(ex, "PayU request failed for ref {Ref}", request.Transaction.Order.ReferenceCode);
+            return new GatewayResult(false, null, $"PayU communication error: {ex.Message}");
         }
     }
 

@@ -259,7 +259,9 @@ builder.Services.AddScoped<IPlinPaymentGateway, PlinPaymentGateway>();
 
 // PayU backs the Card payment method
 builder.Services.Configure<PayUSettings>(builder.Configuration.GetSection("PayU"));
-builder.Services.AddHttpClient<IPayUPaymentGateway, PayUPaymentGateway>();
+// Cap the PayU round-trip so a slow/unresponsive sandbox can't hang the charge request near
+// HttpClient's 100s default; the client (axios) gives up at 30s, so stay under that.
+builder.Services.AddHttpClient<IPayUPaymentGateway, PayUPaymentGateway>(c => c.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddScoped<ICardPaymentGateway>(sp => sp.GetRequiredService<IPayUPaymentGateway>());
 
 builder.Services.AddScoped<ICashPaymentHandler, CashPaymentHandler>();
@@ -267,7 +269,9 @@ builder.Services.AddScoped<PaymentGatewayFactory>();
 builder.Services.AddScoped<IPaymentsContextFacade, PaymentsContextFacade>();
 // Orchestrates payment confirmation -> reservation/subscription activation (no DI cycle).
 builder.Services.AddScoped<PaymentConfirmationService>();
-builder.Services.AddHttpClient<IReservationNotificationService, N8NReservationNotificationService>();
+// Best-effort WhatsApp/N8N notification runs synchronously inside the confirm flow; keep its
+// timeout short so a slow webhook never dominates the charge latency (failures are swallowed).
+builder.Services.AddHttpClient<IReservationNotificationService, N8NReservationNotificationService>(c => c.Timeout = TimeSpan.FromSeconds(5));
 
 // ============================================================
 // Dependency Injection — Subscriptions BC (wired by F4)
@@ -322,6 +326,7 @@ builder.Services.AddScoped<ITripCommandService, TripCommandService>();
 builder.Services.AddScoped<ITripQueryService, TripQueryService>();
 builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 builder.Services.AddScoped<IReservationCommandService, ReservationCommandService>();
+builder.Services.Configure<ReservationHoldOptions>(builder.Configuration.GetSection(ReservationHoldOptions.SectionName));
 builder.Services.AddScoped<IReservationQueryService, ReservationQueryService>();
 builder.Services.AddScoped<ITripsContextFacade, TripsContextFacade>();
 

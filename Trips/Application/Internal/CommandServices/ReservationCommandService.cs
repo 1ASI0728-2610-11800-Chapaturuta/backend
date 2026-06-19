@@ -6,6 +6,7 @@ using Frock_backend.Trips.Domain.Model.ValueObjects;
 using Frock_backend.Trips.Domain.Repositories;
 using Frock_backend.Trips.Domain.Services;
 using Frock_backend.shared.Domain.Repositories;
+using Microsoft.Extensions.Options;
 
 namespace Frock_backend.Trips.Application.Internal.CommandServices;
 
@@ -14,8 +15,11 @@ public class ReservationCommandService(
     ITripRepository tripRepository,
     IUserRepository userRepository,
     IPaymentsContextFacade paymentsContextFacade,
-    IUnitOfWork unitOfWork) : IReservationCommandService
+    IUnitOfWork unitOfWork,
+    IOptions<ReservationHoldOptions> holdOptions) : IReservationCommandService
 {
+    private readonly int _paymentHoldMinutes = holdOptions.Value.PaymentHoldMinutes;
+
     public async Task<Reservation?> Handle(CreateReservationCommand command)
     {
         // Defensive validation: missing references would otherwise surface as a
@@ -26,6 +30,13 @@ public class ReservationCommandService(
         var trip = await tripRepository.FindByIdAsync(command.FkIdTrip);
         if (trip == null)
             throw new InvalidOperationException($"Trip with id {command.FkIdTrip} not found");
+
+        // Free up seats held by unpaid reservations before committing new ones, otherwise abandoned
+        // (never-paid) holds would drain availability forever. Two cases are released here:
+        //   1) any pending hold whose payment window has elapsed (global cleanup), and
+        //   2) this same user's prior pending hold on this trip, so retrying the payment flow
+        //      replaces the old hold instead of stacking a second one.
+        await ReleaseStaleHoldsAsync(trip, command.FkIdUser);
 
         trip.ReserveSeats(command.Seats);
 
@@ -99,5 +110,35 @@ public class ReservationCommandService(
         }
 
         return reservation;
+    }
+
+    /// <summary>
+    ///     Releases seats held by unpaid reservations on the trip and marks those reservations Expired,
+    ///     failing their orphan pending payments. Targets expired holds (payment window elapsed) and the
+    ///     requesting user's existing pending hold on this trip so a payment retry supersedes it.
+    /// </summary>
+    private async Task ReleaseStaleHoldsAsync(Trip trip, int requestingUserId)
+    {
+        var now = DateTime.UtcNow;
+        var reservations = await reservationRepository.FindByTripIdAsync(trip.Id);
+
+        var stale = reservations
+            .Where(r => r.Status == ReservationStatus.Pending
+                        && (r.IsPaymentExpired(now, _paymentHoldMinutes) || r.FkIdUser == requestingUserId))
+            .ToList();
+
+        if (stale.Count == 0) return;
+
+        foreach (var hold in stale)
+        {
+            trip.ReleaseSeats(hold.Seats);
+            hold.Expire();
+            reservationRepository.Update(hold);
+
+            if (hold.FkIdPayment.HasValue)
+                await paymentsContextFacade.FailPaymentAsync(hold.FkIdPayment.Value);
+        }
+
+        await unitOfWork.CompleteAsync();
     }
 }

@@ -1,13 +1,20 @@
+using Frock_backend.IAM.Domain.Model.Aggregates;
+using Frock_backend.IAM.Infrastructure.Persistence.EFC.Repositories;
 using Frock_backend.Payments.Domain.Model.ValueObjects;
 using Frock_backend.Payments.Interfaces.ACL;
+using Frock_backend.routes.Domain.Model.Aggregates;
+using Frock_backend.routes.Infrastructure.Repositories;
 using Frock_backend.shared.Infrastructure.Persistences.EFC.Configuration;
 using Frock_backend.shared.Infrastructure.Persistences.EFC.Repositories;
+using Frock_backend.stops.Domain.Model.Aggregates;
+using Frock_backend.stops.Infrastructure.Repositories;
 using Frock_backend.Trips.Application.Internal.CommandServices;
 using Frock_backend.Trips.Domain.Model.Aggregates;
 using Frock_backend.Trips.Domain.Model.Commands;
 using Frock_backend.Trips.Domain.Model.ValueObjects;
 using Frock_backend.Trips.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Frock_backend.Tests.Trips.Application;
@@ -30,12 +37,30 @@ public class TripReservationFlowTests
         return context;
     }
 
+    /// <summary>
+    ///     Seeds the FK targets that TripCommandService validates (user, route, two stops) so the
+    ///     create-trip flow reaches persistence. EF InMemory assigns the first int key as 1, etc.
+    /// </summary>
+    private static void SeedReferences(AppDbContext context)
+    {
+        context.Set<User>().Add(new User("t@t.com", "tester", "hash", Frock_backend.IAM.Domain.Model.ValueObjects.Role.Traveller)); // -> id 1
+        context.Set<RouteAggregate>().Add(new RouteAggregate(10.0, 30, 30) { Id = 1 });
+        context.Set<Stop>().Add(new Stop(1, "Origen", "Av. Origen", 1, 1) { Reference = "ref" });
+        context.Set<Stop>().Add(new Stop(2, "Destino", "Av. Destino", 1, 1) { Reference = "ref" });
+        context.SaveChanges();
+    }
+
     private static (TripCommandService trips, ReservationCommandService reservations, Mock<IPaymentsContextFacade> payments)
         BuildServices(AppDbContext context)
     {
+        SeedReferences(context);
+
         var unitOfWork = new UnitOfWork(context);
         var tripRepo = new TripRepository(context);
         var reservationRepo = new ReservationRepository(context);
+        var userRepo = new UserRepository(context);
+        var routeRepo = new RouteRepository(context);
+        var stopRepo = new StopRepository(context);
         var payments = new Mock<IPaymentsContextFacade>();
         payments
             .Setup(p => p.RegisterPendingPaymentAsync(
@@ -43,8 +68,10 @@ public class TripReservationFlowTests
                 It.IsAny<string>(), It.IsAny<int>()))
             .ReturnsAsync(777);
 
-        var tripService = new TripCommandService(tripRepo, unitOfWork);
-        var reservationService = new ReservationCommandService(reservationRepo, tripRepo, payments.Object, unitOfWork);
+        var tripService = new TripCommandService(tripRepo, userRepo, routeRepo, stopRepo, unitOfWork);
+        var reservationService = new ReservationCommandService(
+            reservationRepo, tripRepo, userRepo, payments.Object, unitOfWork,
+            Options.Create(new ReservationHoldOptions { PaymentHoldMinutes = 15 }));
         return (tripService, reservationService, payments);
     }
 
