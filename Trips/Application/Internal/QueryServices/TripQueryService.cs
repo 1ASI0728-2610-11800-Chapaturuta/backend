@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Frock_backend.Trips.Application.Internal.QueryServices;
 
-public class TripQueryService(ITripRepository tripRepository, AppDbContext context, IDriverContextFacade driverContextFacade) : ITripQueryService
+public class TripQueryService(ITripRepository tripRepository, IReservationRepository reservationRepository, AppDbContext context, IDriverContextFacade driverContextFacade) : ITripQueryService
 {
     public async Task<Trip?> Handle(GetTripByIdQuery query)
     {
@@ -31,11 +31,22 @@ public class TripQueryService(ITripRepository tripRepository, AppDbContext conte
 
     public async Task<IEnumerable<TripHistoryView>> Handle(GetTripHistoryByUserIdQuery query)
     {
+        // A passenger is linked to a published trip ONLY through a Reservation (Trip.FkIdUser holds
+        // the publisher/driver-side user, not the reserving passenger). So the passenger's history
+        // must union: trips they created (FkIdUser) + trips they reserved a seat on.
+        var reservations = (await reservationRepository.FindByUserIdAsync(query.UserId)).ToList();
+
+        // Latest reservation per trip — surfaces its status/seats on the history row.
+        var myReservationsByTrip = reservations
+            .GroupBy(r => r.FkIdTrip)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.ReservedAt).First());
+        var reservedTripIds = myReservationsByTrip.Keys.ToHashSet();
+
         var trips = await context.Set<Trip>()
-            .Where(t => t.FkIdUser == query.UserId)
+            .Where(t => t.FkIdUser == query.UserId || reservedTripIds.Contains(t.Id))
             .OrderByDescending(t => t.StartTime)
             .ToListAsync();
-        return await BuildHistoryAsync(trips);
+        return await BuildHistoryAsync(trips, myReservationsByTrip);
     }
 
     public async Task<IEnumerable<TripHistoryView>> Handle(GetTripHistoryByDriverIdQuery query)
@@ -49,8 +60,19 @@ public class TripQueryService(ITripRepository tripRepository, AppDbContext conte
 
     public async Task<IEnumerable<TripHistoryView>> Handle(GetAvailableTripsQuery query)
     {
+        // A driver may only see trip requests on routes they OWN. Route ownership = any of the
+        // route's stops belongs to the driver (Stop.FkIdDriver). Resolve driver from the user.
+        var driverId = await driverContextFacade.FetchDriverIdByUserIdAsync(query.UserId);
+        if (driverId is null) return Enumerable.Empty<TripHistoryView>();
+
+        var ownedRouteIds = await context.Set<RouteAggregate>()
+            .Where(r => r.Stops.Any(rs => rs.Stop.FkIdDriver == driverId.Value))
+            .Select(r => r.Id)
+            .ToHashSetAsync();
+        if (ownedRouteIds.Count == 0) return Enumerable.Empty<TripHistoryView>();
+
         var trips = await context.Set<Trip>()
-            .Where(t => t.FkIdDriver == null && t.Status == TripStatus.Pending)
+            .Where(t => t.FkIdDriver == null && t.Status == TripStatus.Pending && ownedRouteIds.Contains(t.FkIdRoute))
             .OrderByDescending(t => t.StartTime)
             .ToListAsync();
         return await BuildHistoryAsync(trips);
@@ -68,8 +90,11 @@ public class TripQueryService(ITripRepository tripRepository, AppDbContext conte
         return await BuildHistoryAsync(trips);
     }
 
-    // Resolves names with bulk lookups (no N+1).
-    private async Task<IEnumerable<TripHistoryView>> BuildHistoryAsync(List<Trip> trips)
+    // Resolves names with bulk lookups (no N+1). When myReservationsByTrip is supplied, each row is
+    // enriched with the querying passenger's reservation status/seats for that trip.
+    private async Task<IEnumerable<TripHistoryView>> BuildHistoryAsync(
+        List<Trip> trips,
+        IReadOnlyDictionary<int, Reservation>? myReservationsByTrip = null)
     {
         if (trips.Count == 0) return Enumerable.Empty<TripHistoryView>();
 
@@ -122,6 +147,9 @@ public class TripQueryService(ITripRepository tripRepository, AppDbContext conte
                 && !string.IsNullOrWhiteSpace(name))
                 driverName = name;
 
+            Reservation? myReservation = null;
+            myReservationsByTrip?.TryGetValue(t.Id, out myReservation);
+
             return new TripHistoryView(
                 t.Id,
                 routes.Contains(t.FkIdRoute) ? $"Ruta {t.FkIdRoute}" : "Ruta desconocida",
@@ -134,7 +162,10 @@ public class TripQueryService(ITripRepository tripRepository, AppDbContext conte
                 t.Price,
                 t.Status.ToString(),
                 t.FkIdRoute,
-                t.AvailableSeats);
+                t.AvailableSeats,
+                myReservation?.Id,
+                myReservation?.Status.ToString(),
+                myReservation?.Seats);
         }).ToList();
     }
 }

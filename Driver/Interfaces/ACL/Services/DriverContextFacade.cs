@@ -82,6 +82,20 @@ public class DriverContextFacade(
 
     /**
      * <summary>
+     *     Returns the registered vehicle's seat capacity for the given driver.
+     * </summary>
+     * <param name="driverId">The driver identifier.</param>
+     * <returns>The vehicle capacity, or null when no existing driver matches.</returns>
+     */
+    public async Task<int?> FetchVehicleCapacityByDriverIdAsync(int driverId)
+    {
+        var driver = await driverRepository.FindByIdAsync(driverId);
+        if (driver == null || driver.IsDeleted) return null;
+        return driver.Vehicle.Capacity;
+    }
+
+    /**
+     * <summary>
      *     Bulk-resolves driver full names keyed by driver identifier in a single query.
      * </summary>
      * <param name="driverIds">The driver identifiers to resolve.</param>

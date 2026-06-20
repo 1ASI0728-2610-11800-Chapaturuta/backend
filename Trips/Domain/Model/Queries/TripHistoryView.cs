@@ -13,4 +13,8 @@ public record TripHistoryView(
     decimal? Price,
     string Status,
     int FkIdRoute,
-    int AvailableSeats);
+    int AvailableSeats,
+    // Reservation of the querying passenger on this trip (null when none / not a reservation-derived row).
+    int? MyReservationId = null,
+    string? MyReservationStatus = null,
+    int? MyReservationSeats = null);

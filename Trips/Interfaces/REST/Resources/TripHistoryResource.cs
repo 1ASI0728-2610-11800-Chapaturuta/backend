@@ -12,4 +12,7 @@ public record TripHistoryResource(
     decimal? Price,
     string Status,
     int FkIdRoute,
-    int AvailableSeats);
+    int AvailableSeats,
+    int? MyReservationId = null,
+    string? MyReservationStatus = null,
+    int? MyReservationSeats = null);

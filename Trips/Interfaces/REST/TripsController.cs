@@ -5,6 +5,7 @@ using Frock_backend.Trips.Interfaces.REST.Resources;
 using Frock_backend.Trips.Interfaces.REST.Transform;
 using Frock_backend.IAM.Infrastructure.Pipeline.Middleware.Attributes;
 using Frock_backend.IAM.Domain.Model.ValueObjects;
+using Frock_backend.IAM.Domain.Model.Aggregates;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net.Mime;
@@ -17,6 +18,9 @@ namespace Frock_backend.Trips.Interfaces.REST;
 [Tags("Trips")]
 public class TripsController(ITripCommandService commandService, ITripQueryService queryService) : ControllerBase
 {
+    // Authenticated user id, injected by the IAM middleware into HttpContext.Items["User"].
+    private int? CurrentUserId => (HttpContext.Items["User"] as User)?.Id;
+
     [HttpPost]
     [Authorize(Role.Traveller, Role.Admin)]
     [SwaggerOperation(Summary = "Register a trip", OperationId = "CreateTrip")]
@@ -120,7 +124,8 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized - token missing or invalid")]
     public async Task<IActionResult> GetAvailableTrips()
     {
-        var views = await queryService.Handle(new GetAvailableTripsQuery());
+        if (CurrentUserId is null) return Unauthorized();
+        var views = await queryService.Handle(new GetAvailableTripsQuery(CurrentUserId.Value));
         var resources = views.Select(TripHistoryResourceFromViewAssembler.ToResourceFromView);
         return Ok(resources);
     }
@@ -151,9 +156,10 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
     [SwaggerResponse(StatusCodes.Status404NotFound, "Trip not found")]
     public async Task<IActionResult> StartTrip(int id)
     {
+        if (CurrentUserId is null) return Unauthorized();
         try
         {
-            var trip = await commandService.Handle(new StartTripCommand(id));
+            var trip = await commandService.Handle(new StartTripCommand(id, CurrentUserId.Value));
             if (trip == null) return NotFound();
             return Ok(TripResourceFromEntityAssembler.ToResourceFromEntity(trip));
         }

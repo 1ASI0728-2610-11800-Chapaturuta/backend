@@ -1,3 +1,4 @@
+using Frock_backend.Driver.Interfaces.ACL;
 using Frock_backend.IAM.Domain.Repositories;
 using Frock_backend.routes.Domain.Repository;
 using Frock_backend.stops.Domain.Repositories;
@@ -14,8 +15,24 @@ public class TripCommandService(
     IUserRepository userRepository,
     IRouteRepository routeRepository,
     IStopRepository stopRepository,
+    IDriverContextFacade driverContextFacade,
     IUnitOfWork unitOfWork) : ITripCommandService
 {
+    // Verifies the route belongs to the driver: route ownership = any of the route's stops is owned
+    // by the driver (Stop.FkIdDriver). Resolves the driver from the authenticated user first.
+    private async Task<int> EnsureDriverOwnsTripRouteAsync(int requestingUserId, Trip trip)
+    {
+        var driverId = await driverContextFacade.FetchDriverIdByUserIdAsync(requestingUserId);
+        if (driverId is null)
+            throw new InvalidOperationException("No existe un conductor asociado a este usuario");
+
+        var ownedRoutes = await routeRepository.FindByDriverId(driverId.Value);
+        if (ownedRoutes.All(r => r.Id != trip.FkIdRoute))
+            throw new InvalidOperationException("No puedes operar un viaje de una ruta que no te pertenece");
+
+        return driverId.Value;
+    }
+
     public async Task<Trip?> Handle(CreateTripCommand command)
     {
         // Validate referenced entities exist BEFORE persisting. Otherwise a missing FK
@@ -33,7 +50,18 @@ public class TripCommandService(
         if (await stopRepository.FindByIdAsync(command.FkIdDestinationStop) is null)
             throw new KeyNotFoundException($"Destination stop with id {command.FkIdDestinationStop} not found");
 
-        var trip = new Trip(command.FkIdUser, command.FkIdDriver, command.FkIdRoute, command.FkIdOriginStop, command.FkIdDestinationStop, command.Price, command.AvailableSeats);
+        // Seat capacity is NOT a free-form field for published trips: it must come from the driver's
+        // registered vehicle (Driver.Vehicle.Capacity). When a driver is set (publish flow), the
+        // vehicle capacity overrides whatever the client sent. Passenger-created requests
+        // (FkIdDriver null) keep the supplied seat count.
+        var availableSeats = command.AvailableSeats;
+        if (command.FkIdDriver is > 0)
+        {
+            var capacity = await driverContextFacade.FetchVehicleCapacityByDriverIdAsync(command.FkIdDriver.Value);
+            if (capacity is > 0) availableSeats = capacity.Value;
+        }
+
+        var trip = new Trip(command.FkIdUser, command.FkIdDriver, command.FkIdRoute, command.FkIdOriginStop, command.FkIdDestinationStop, command.Price, availableSeats);
 
         // Don't re-wrap persistence failures in a bare Exception: that discarded the
         // DbUpdateException (and its InnerException with the real SQL error) and made the
@@ -48,6 +76,11 @@ public class TripCommandService(
         var trip = await tripRepository.FindByIdAsync(command.TripId);
         if (trip == null) return null;
 
+        // A driver can only claim trips on routes they own.
+        var ownedRoutes = await routeRepository.FindByDriverId(command.DriverId);
+        if (ownedRoutes.All(r => r.Id != trip.FkIdRoute))
+            throw new InvalidOperationException("No puedes reclamar un viaje de una ruta que no te pertenece");
+
         // Domain guards reject claiming a non-pending or already-assigned trip; let the
         // InvalidOperationException surface so the controller returns a controlled 400.
         trip.AssignDriver(command.DriverId);
@@ -60,6 +93,9 @@ public class TripCommandService(
     {
         var trip = await tripRepository.FindByIdAsync(command.TripId);
         if (trip == null) return null;
+
+        // A driver can only start trips on routes they own.
+        await EnsureDriverOwnsTripRouteAsync(command.RequestingUserId, trip);
 
         trip.Start();
         tripRepository.Update(trip);

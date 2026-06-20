@@ -1,3 +1,4 @@
+using Frock_backend.Driver.Interfaces.ACL;
 using Frock_backend.IAM.Domain.Model.Aggregates;
 using Frock_backend.IAM.Infrastructure.Persistence.EFC.Repositories;
 using Frock_backend.Payments.Domain.Model.ValueObjects;
@@ -68,7 +69,8 @@ public class TripReservationFlowTests
                 It.IsAny<string>(), It.IsAny<int>()))
             .ReturnsAsync(777);
 
-        var tripService = new TripCommandService(tripRepo, userRepo, routeRepo, stopRepo, unitOfWork);
+        var driverFacade = new Mock<IDriverContextFacade>();
+        var tripService = new TripCommandService(tripRepo, userRepo, routeRepo, stopRepo, driverFacade.Object, unitOfWork);
         var reservationService = new ReservationCommandService(
             reservationRepo, tripRepo, userRepo, payments.Object, unitOfWork,
             Options.Create(new ReservationHoldOptions { PaymentHoldMinutes = 15 }));

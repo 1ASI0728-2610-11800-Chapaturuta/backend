@@ -29,6 +29,12 @@ public interface IDriverContextFacade
     Task<string?> FetchDriverNameByDriverIdAsync(int driverId);
 
     /// <summary>
+    ///     Returns the seat capacity of the driver's registered vehicle. Null when no driver matches.
+    ///     This is the single source of truth for how many seats a published trip offers.
+    /// </summary>
+    Task<int?> FetchVehicleCapacityByDriverIdAsync(int driverId);
+
+    /// <summary>
     ///     Bulk-resolves driver full names keyed by driver identifier, avoiding N+1 lookups.
     ///     Only existing (non soft-deleted) drivers are present in the result.
     /// </summary>

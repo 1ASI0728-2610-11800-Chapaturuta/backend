@@ -18,5 +18,8 @@ public static class TripHistoryResourceFromViewAssembler
             view.Price,
             view.Status,
             view.FkIdRoute,
-            view.AvailableSeats);
+            view.AvailableSeats,
+            view.MyReservationId,
+            view.MyReservationStatus,
+            view.MyReservationSeats);
 }
