@@ -317,6 +317,19 @@ Swagger UI: http://localhost:5027/swagger/index.html
 | GET | `/api/discovery/nearby?lat=&lng=&radius=&useRoadDistance=false` | Paraderos cercanos; `useRoadDistance=true` ordena por tiempo real de carretera vía OSRM |
 | GET | `/api/discovery/popular?limit=10` | Rutas populares por viajes |
 | GET | `/api/discovery/analytics/demand?districtId=&period=` | Analytics de demanda |
+| POST | `/api/discovery/assistant` | Asistente IA de rutas en lenguaje natural (**Premium**). Pide de viaje → itinerario multi-tramo del grafo; pregunta del dominio → respuesta grounded sobre la red; fuera de dominio → rechazo |
+
+#### Asistente IA (`/api/discovery/assistant`)
+
+Asistente en lenguaje natural, exclusivo del plan Premium. Diseño:
+
+- **Grafo = fuente de verdad.** Los itinerarios los arma `JourneyPlannerService` (Dijkstra sobre paraderos + transbordos a pie). El LLM nunca inventa rutas.
+- **LLM (OpenRouter).** Solo extrae origen/destino, narra el itinerario y responde preguntas del dominio. Proveedor conmutable por `Assistant__Provider` (`openrouter` por defecto, `ollama` para dev local). Modelo por defecto: `deepseek/deepseek-v4-flash`.
+- **RAG estructurado (grounding).** `RouteKnowledgeRetriever` consulta las rutas activas y arma un contexto compacto; el asistente responde **solo** con ese contexto.
+- **Contención de dominio.** El system prompt rechaza con amabilidad cualquier pregunta fuera del transporte de la app.
+- **Degradación elegante.** Si OpenRouter no responde, cae a heurísticas deterministas (regex para origen/destino, plantilla para narrar, rechazo para Q&A).
+
+> La API key va en `.env` (`Assistant__ApiKey`), **nunca hardcodeada**. Copiar `.env.example` → `.env` y completar. `.env` está en `.gitignore`.
 
 ### Health
 
@@ -336,6 +349,12 @@ Swagger UI: http://localhost:5027/swagger/index.html
 | `Osrm__TimeoutSeconds` | Timeout HTTP a OSRM (segundos) | `10` |
 | `Osrm__Profile` | Perfil de routing OSRM | `driving` |
 | `OsmTiles__PublicUrl` | URL de tiles expuesta al frontend | `http://localhost:8088/tile/{z}/{x}/{y}.png` |
+| `Assistant__Enabled` | Habilita el asistente IA (`/api/discovery/assistant`) | `true` |
+| `Assistant__Provider` | Proveedor LLM: `openrouter` o `ollama` (dev local) | `openrouter` |
+| `Assistant__BaseUrl` | Base URL del proveedor | `https://openrouter.ai` |
+| `Assistant__Model` | Modelo del LLM | `deepseek/deepseek-v4-flash` |
+| `Assistant__ApiKey` | **Secreto** — API key de OpenRouter. Va en `.env`, nunca commiteada | *(vacío)* |
+| `Assistant__TimeoutSeconds` | Timeout HTTP al LLM (segundos) | `30` |
 
 ## OSRM: demo público (default) vs self-hosted
 

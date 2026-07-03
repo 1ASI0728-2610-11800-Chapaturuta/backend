@@ -5,17 +5,17 @@ using Frock_backend.Discovery.Domain.Services;
 namespace Frock_backend.Discovery.Infrastructure.ExternalServices;
 
 /// <summary>
-///     Cliente del asistente sobre un LLM local de Ollama (POST /api/chat).
-///     Pensado para desarrollo local; en producción se usa OpenRouter (ver Assistant:Provider).
-///     Si Ollama no responde, cae a heurísticas deterministas (regex / plantilla / rechazo)
+///     Cliente del asistente sobre OpenRouter (API compatible con OpenAI, POST /chat/completions),
+///     usando por defecto el modelo remoto configurado (p. ej. deepseek/deepseek-v4-flash).
+///     Si OpenRouter no responde, cae a heurísticas deterministas (regex / plantilla / rechazo)
 ///     para que la función siga operativa y contenida en su dominio.
 /// </summary>
-public class OllamaChatAssistant(
+public class OpenRouterChatAssistant(
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration,
-    ILogger<OllamaChatAssistant> logger) : IChatAssistant
+    ILogger<OpenRouterChatAssistant> logger) : IChatAssistant
 {
-    private readonly string _model = configuration["Assistant:Model"] ?? "llama3.1";
+    private readonly string _model = configuration["Assistant:Model"] ?? "deepseek/deepseek-v4-flash";
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
     public async Task<(string? Origin, string? Destination)> ExtractOriginDestinationAsync(string message)
@@ -42,7 +42,7 @@ public class OllamaChatAssistant(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Ollama extract falló; uso heurística");
+            logger.LogWarning(ex, "OpenRouter extract falló; uso heurística");
         }
         return (o, d);
     }
@@ -58,7 +58,7 @@ public class OllamaChatAssistant(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Ollama narrate falló; uso plantilla");
+            logger.LogWarning(ex, "OpenRouter narrate falló; uso plantilla");
             return template;
         }
     }
@@ -73,19 +73,19 @@ public class OllamaChatAssistant(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Ollama grounded answer falló; uso rechazo determinista");
+            logger.LogWarning(ex, "OpenRouter grounded answer falló; uso rechazo determinista");
             return AssistantHeuristics.GroundedFallback;
         }
     }
 
-    // ── Ollama HTTP ──────────────────────────────────────────────────────────────
+    // ── OpenRouter HTTP (compatible con OpenAI /chat/completions) ─────────────────
     private async Task<string?> ChatAsync(string system, string user, int timeoutSeconds)
     {
-        var client = httpClientFactory.CreateClient("ollama");
+        var client = httpClientFactory.CreateClient("openrouter");
         var body = new
         {
             model = _model,
-            stream = false,
+            temperature = 0.2,
             messages = new[]
             {
                 new { role = "system", content = system },
@@ -93,15 +93,15 @@ public class OllamaChatAssistant(
             }
         };
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
-        var response = await client.PostAsJsonAsync("/api/chat", body, cts.Token);
+        var response = await client.PostAsJsonAsync("/api/v1/chat/completions", body, cts.Token);
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning("Ollama devolvió {Status}", (int)response.StatusCode);
+            logger.LogWarning("OpenRouter devolvió {Status}", (int)response.StatusCode);
             return null;
         }
         var json = await response.Content.ReadAsStringAsync(cts.Token);
-        var parsed = JsonSerializer.Deserialize<OllamaChatResponse>(json, JsonOpts);
-        return parsed?.Message?.Content;
+        var parsed = JsonSerializer.Deserialize<OpenRouterResponse>(json, JsonOpts);
+        return parsed?.Choices?.FirstOrDefault()?.Message?.Content;
     }
 
     private sealed class ExtractDto
@@ -109,11 +109,15 @@ public class OllamaChatAssistant(
         public string? Origin { get; set; }
         public string? Destination { get; set; }
     }
-    private sealed class OllamaChatResponse
+    private sealed class OpenRouterResponse
     {
-        public OllamaMessage? Message { get; set; }
+        public List<OpenRouterChoice>? Choices { get; set; }
     }
-    private sealed class OllamaMessage
+    private sealed class OpenRouterChoice
+    {
+        public OpenRouterMessage? Message { get; set; }
+    }
+    private sealed class OpenRouterMessage
     {
         public string? Role { get; set; }
         public string? Content { get; set; }

@@ -120,6 +120,15 @@ using Frock_backend.Discovery.Application.Internal.QueryServices;
 
 
 // ============================================================
+// Environment variables (.env) — loaded before the host builder so
+// AddEnvironmentVariables() (added by default) can bind them into IConfiguration.
+// Secrets (e.g. Assistant__ApiKey) live in .env, which is gitignored — never hardcoded.
+// In production (Azure Container Apps) the same keys are provided as real env vars,
+// so a missing .env file is not an error.
+// ============================================================
+DotNetEnv.Env.TraversePath().Load();
+
+// ============================================================
 // Serilog Configuration
 // ============================================================
 Log.Logger = new LoggerConfiguration()
@@ -351,20 +360,53 @@ builder.Services.AddScoped<INotificationQueryService, NotificationQueryService>(
 builder.Services.AddScoped<IDiscoveryQueryService, DiscoveryQueryService>();
 
 // Asistente IA de viajes multi-tramo (Pasajero Premium).
-// Grafo = fuente de verdad; el LLM (Ollama local, swappable a Claude) solo narra.
+// Grafo = fuente de verdad; el LLM solo extrae origen/destino, narra y responde
+// preguntas del dominio con grounding. Proveedor conmutable por Assistant:Provider
+// (openrouter | ollama). Retrieval estructurado sobre la red para el grounding.
 builder.Services.AddScoped<Frock_backend.Discovery.Domain.Services.IJourneyPlanner,
     Frock_backend.Discovery.Application.Internal.Services.JourneyPlannerService>();
-builder.Services.AddScoped<Frock_backend.Discovery.Domain.Services.IChatAssistant,
-    Frock_backend.Discovery.Infrastructure.ExternalServices.OllamaChatAssistant>();
+builder.Services.AddScoped<Frock_backend.Discovery.Domain.Services.IRouteKnowledgeRetriever,
+    Frock_backend.Discovery.Application.Internal.Services.RouteKnowledgeRetriever>();
 builder.Services.AddScoped<Frock_backend.Discovery.Domain.Services.IAssistantQueryService,
     Frock_backend.Discovery.Application.Internal.QueryServices.AssistantQueryService>();
-builder.Services.AddHttpClient("ollama", client =>
+
+var assistantProvider = (builder.Configuration["Assistant:Provider"] ?? "openrouter").ToLowerInvariant();
+var assistantTimeout = int.TryParse(builder.Configuration["Assistant:TimeoutSeconds"], out var at) ? at : 30;
+
+if (assistantProvider == "ollama")
 {
-    var baseUrl = builder.Configuration["Assistant:BaseUrl"] ?? "http://localhost:11434";
-    var timeout = int.TryParse(builder.Configuration["Assistant:TimeoutSeconds"], out var t) ? t : 30;
-    client.BaseAddress = new Uri(baseUrl);
-    client.Timeout = TimeSpan.FromSeconds(timeout);
-});
+    // LLM local — solo para desarrollo (no disponible en producción/Azure).
+    builder.Services.AddScoped<Frock_backend.Discovery.Domain.Services.IChatAssistant,
+        Frock_backend.Discovery.Infrastructure.ExternalServices.OllamaChatAssistant>();
+    builder.Services.AddHttpClient("ollama", client =>
+    {
+        client.BaseAddress = new Uri(builder.Configuration["Assistant:BaseUrl"] ?? "http://localhost:11434");
+        client.Timeout = TimeSpan.FromSeconds(assistantTimeout);
+    });
+}
+else
+{
+    // OpenRouter (API compatible con OpenAI). La API key viene de env var / .env
+    // (Assistant__ApiKey) — nunca hardcodeada.
+    builder.Services.AddScoped<Frock_backend.Discovery.Domain.Services.IChatAssistant,
+        Frock_backend.Discovery.Infrastructure.ExternalServices.OpenRouterChatAssistant>();
+    builder.Services.AddHttpClient("openrouter", client =>
+    {
+        client.BaseAddress = new Uri(builder.Configuration["Assistant:BaseUrl"] ?? "https://openrouter.ai");
+        client.Timeout = TimeSpan.FromSeconds(assistantTimeout);
+
+        var apiKey = builder.Configuration["Assistant:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(apiKey))
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+
+        // Headers opcionales que OpenRouter usa para identificar la app.
+        client.DefaultRequestHeaders.Add("HTTP-Referer",
+            builder.Configuration["Assistant:SiteUrl"] ?? "https://frock-backend");
+        client.DefaultRequestHeaders.Add("X-OpenRouter-Title",
+            builder.Configuration["Assistant:SiteName"] ?? "Frock Discovery Assistant");
+    });
+}
 
 // ============================================================
 // OSRM Routing Service

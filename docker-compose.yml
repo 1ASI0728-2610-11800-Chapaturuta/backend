@@ -138,6 +138,9 @@ services:
     ports:
       - "5027:8080"
     restart: on-failure
+    # Secretos (Assistant__ApiKey) inyectados en runtime desde .env — no van en la imagen.
+    env_file:
+      - .env
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "server=mysql;user=root;password=root;database=frockdb"

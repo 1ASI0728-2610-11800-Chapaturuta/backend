@@ -16,6 +16,7 @@ public class AssistantQueryService(
     ISubscriptionsContextFacade subscriptionsContextFacade,
     IJourneyPlanner journeyPlanner,
     IChatAssistant chatAssistant,
+    IRouteKnowledgeRetriever routeKnowledgeRetriever,
     IOsrmRoutingService osrmRoutingService,
     IConfiguration configuration) : IAssistantQueryService
 {
@@ -43,10 +44,18 @@ public class AssistantQueryService(
             return new AssistantReply("Cuéntame a dónde quieres ir, por ejemplo: \"¿cómo llego de Surco a Comas?\"", []);
 
         var (origin, destination) = await chatAssistant.ExtractOriginDestinationAsync(query.Message);
-        if (string.IsNullOrWhiteSpace(origin) || string.IsNullOrWhiteSpace(destination))
-            return new AssistantReply(
-                "No entendí bien el origen y el destino. Dime, por ejemplo: \"de {origen} a {destino}\".", []);
 
+        // Sin un par origen/destino claro no es un pedido de viaje: lo tratamos como pregunta
+        // general del dominio. Retrieval estructurado + respuesta grounded (el system prompt
+        // rechaza lo que caiga fuera del transporte de la app). No devuelve itinerarios.
+        if (string.IsNullOrWhiteSpace(origin) || string.IsNullOrWhiteSpace(destination))
+        {
+            var context = await routeKnowledgeRetriever.RetrieveAsync(query.Message);
+            var groundedReply = await chatAssistant.AnswerGroundedAsync(query.Message, context);
+            return new AssistantReply(groundedReply, []);
+        }
+
+        // Pedido de viaje: el grafo arma el itinerario (fuente de verdad); el LLM solo lo narra.
         var plan = await journeyPlanner.PlanAsync(origin, destination);
         plan = await EnrichWithEtaAsync(plan);
 

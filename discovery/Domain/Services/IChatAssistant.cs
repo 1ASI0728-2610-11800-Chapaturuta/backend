@@ -14,4 +14,14 @@ public interface IChatAssistant
 
     /// <summary>Redacta una respuesta conversacional describiendo el itinerario ya calculado.</summary>
     Task<string> NarrateAsync(string message, JourneyPlanResult plan);
+
+    /// <summary>
+    ///     Responde una pregunta del dominio (rutas, paraderos, precios, horarios, cobertura)
+    ///     usando ÚNICAMENTE el contexto recuperado de la red (grounding). Debe rechazar con
+    ///     amabilidad si la pregunta cae fuera del dominio de transporte urbano de la app, o si
+    ///     el contexto no contiene la respuesta. Nunca inventa rutas, paraderos ni precios.
+    /// </summary>
+    /// <param name="message">Pregunta en lenguaje natural del usuario.</param>
+    /// <param name="context">Snapshot estructurado de la red relevante a la pregunta.</param>
+    Task<string> AnswerGroundedAsync(string message, string context);
 }

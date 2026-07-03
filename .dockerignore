@@ -14,3 +14,6 @@ scripts/node_modules/
 *.pbf
 *.osrm*
 deploy/azure.env.local
+
+# Secretos locales: nunca hornear en la imagen. Se inyectan en runtime (env_file en compose).
+.env
