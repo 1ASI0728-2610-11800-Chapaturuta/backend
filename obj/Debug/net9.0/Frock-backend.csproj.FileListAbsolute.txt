@@ -1419,3 +1419,5 @@ h:\8vo ciclo\UIni\Emergentes\Codigo\backend\bin_verify\runtimes\win\lib\net8.0\S
 f:\Ciclo8\Arqui\TrabajoFinal\backend\bin\Debug\net9.0\scripts\package-lock.json
 f:\Ciclo8\Arqui\TrabajoFinal\backend\bin\Debug\net9.0\scripts\package.json
 f:\Ciclo8\Arqui\TrabajoFinal\backend\bin\Debug\net9.0\stops\Infrastructure\Seeding\geo-data.json
+h:\8vo ciclo\UIni\Emergentes\Codigo\backend\bin\Debug\net9.0\DotNetEnv.dll
+h:\8vo ciclo\UIni\Emergentes\Codigo\backend\bin\Debug\net9.0\Sprache.dll
