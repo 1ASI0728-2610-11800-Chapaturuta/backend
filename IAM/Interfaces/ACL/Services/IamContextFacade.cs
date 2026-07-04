@@ -1,10 +1,14 @@
 using Frock_backend.IAM.Domain.Model.Commands;
 using Frock_backend.IAM.Domain.Model.Queries;
 using Frock_backend.IAM.Domain.Model.ValueObjects;
+using Frock_backend.IAM.Domain.Repositories;
 using Frock_backend.IAM.Domain.Services;
 
 namespace Frock_backend.IAM.Interfaces.ACL.Services;
-public class IamContextFacade(IUserCommandService userCommandService, IUserQueryService userQueryService) : IIamContextFacade
+public class IamContextFacade(
+    IUserCommandService userCommandService,
+    IUserQueryService userQueryService,
+    IUserRepository userRepository) : IIamContextFacade
 {
     /**
      * <summary>
@@ -87,5 +91,18 @@ public class IamContextFacade(IUserCommandService userCommandService, IUserQuery
         var getUserByIdQuery = new GetUserByIdQuery(userId);
         var result = await userQueryService.Handle(getUserByIdQuery);
         return result?.Role.ToString();
+    }
+
+    /**
+     * <summary>
+     *     Bulk-resolves usernames keyed by user identifier in a single query.
+     * </summary>
+     * <param name="userIds">The user identifiers to resolve.</param>
+     * <returns>A dictionary mapping user id to username for every existing user.</returns>
+     */
+    public async Task<IReadOnlyDictionary<int, string>> FetchUsernamesByUserIdsAsync(IEnumerable<int> userIds)
+    {
+        var users = await userRepository.FindByIdsAsync(userIds);
+        return users.ToDictionary(u => u.Id, u => u.Username);
     }
 }

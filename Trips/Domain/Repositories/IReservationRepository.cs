@@ -8,4 +8,5 @@ public interface IReservationRepository : IBaseRepository<Reservation>
     Task<IEnumerable<Reservation>> FindByUserIdAsync(int userId);
     Task<IEnumerable<Reservation>> FindByTripIdAsync(int tripId);
     Task<IEnumerable<Reservation>> FindByDriverIdAsync(int driverId);
+    Task<List<Reservation>> FindByTripIdsAsync(IEnumerable<int> tripIds);
 }

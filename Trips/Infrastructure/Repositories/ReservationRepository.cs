@@ -37,4 +37,14 @@ public class ReservationRepository(AppDbContext context) : BaseRepository<Reserv
             .Select(x => x.Reservation)
             .ToListAsync();
     }
+
+    public async Task<List<Reservation>> FindByTripIdsAsync(IEnumerable<int> tripIds)
+    {
+        var idSet = tripIds.ToHashSet();
+        if (idSet.Count == 0) return new List<Reservation>();
+
+        return await Context.Set<Reservation>()
+            .Where(r => idSet.Contains(r.FkIdTrip))
+            .ToListAsync();
+    }
 }

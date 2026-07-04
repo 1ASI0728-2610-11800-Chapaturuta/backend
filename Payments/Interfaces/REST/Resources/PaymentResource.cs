@@ -11,5 +11,7 @@ public record PaymentResource(
     string ReferenceType,
     int ReferenceId,
     DateTime CreatedAt,
-    DateTime? ConfirmedAt
+    DateTime? ConfirmedAt,
+    // Display-only name of the user who made the payment. Never persisted — resolved on read.
+    string? PayerName = null
 );

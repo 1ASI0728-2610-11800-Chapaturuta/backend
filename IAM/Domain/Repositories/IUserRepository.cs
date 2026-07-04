@@ -25,4 +25,13 @@ public interface IUserRepository : IBaseRepository<User>
      * <returns>True if the user exists, false otherwise</returns>
      */
     bool ExistsByUsername(string username);
+
+    /**
+     * <summary>
+     *     Bulk-resolves users given their identifiers, avoiding N+1 lookups.
+     * </summary>
+     * <param name="ids">The user identifiers to find.</param>
+     * <returns>The matching users.</returns>
+     */
+    Task<IEnumerable<User>> FindByIdsAsync(IEnumerable<int> ids);
 }

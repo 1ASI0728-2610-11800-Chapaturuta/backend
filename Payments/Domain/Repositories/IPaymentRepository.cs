@@ -7,4 +7,5 @@ public interface IPaymentRepository : IBaseRepository<Payment>
 {
     Task<IEnumerable<Payment>> FindByUserIdAsync(int fkIdUser);
     Task<IEnumerable<Payment>> FindByReferenceAsync(string referenceType, int referenceId);
+    Task<List<Payment>> FindByReferenceTypeAndReferenceIdsAsync(string referenceType, IEnumerable<int> referenceIds);
 }

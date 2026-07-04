@@ -27,4 +27,12 @@ public class UserRepository(AppDbContext context) : BaseRepository<User>(context
     {
         return await Context.Set<User>().AnyAsync(user => user.Email.Equals(email));
     }
+
+    public async Task<IEnumerable<User>> FindByIdsAsync(IEnumerable<int> ids)
+    {
+        var idSet = ids.ToHashSet();
+        if (idSet.Count == 0) return new List<User>();
+
+        return await Context.Set<User>().Where(user => idSet.Contains(user.Id)).ToListAsync();
+    }
 }

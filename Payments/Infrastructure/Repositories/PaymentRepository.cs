@@ -23,4 +23,14 @@ public class PaymentRepository(AppDbContext context) : BaseRepository<Payment>(c
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
     }
+
+    public async Task<List<Payment>> FindByReferenceTypeAndReferenceIdsAsync(string referenceType, IEnumerable<int> referenceIds)
+    {
+        var idSet = referenceIds.ToHashSet();
+        if (idSet.Count == 0) return new List<Payment>();
+
+        return await Context.Set<Payment>()
+            .Where(p => p.ReferenceType == referenceType && idSet.Contains(p.ReferenceId))
+            .ToListAsync();
+    }
 }

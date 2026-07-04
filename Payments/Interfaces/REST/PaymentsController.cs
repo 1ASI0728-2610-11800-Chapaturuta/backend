@@ -129,7 +129,17 @@ public class PaymentsController(
     public async Task<IActionResult> GetPaymentsByUser(int userId)
     {
         var payments = await paymentQueryService.Handle(new GetPaymentsByUserIdQuery(userId));
-        var resources = payments.Select(PaymentResourceFromEntityAssembler.ToResourceFromEntity);
+        var resources = payments.Select(p => PaymentResourceFromEntityAssembler.ToResourceFromEntity(p));
+        return Ok(resources);
+    }
+
+    [HttpGet("driver/{driverId:int}")]
+    [SwaggerOperation(Summary = "Get payments received by a driver", OperationId = "GetPaymentsReceivedByDriver")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Payments found", typeof(IEnumerable<PaymentResource>))]
+    public async Task<IActionResult> GetPaymentsReceivedByDriver(int driverId)
+    {
+        var views = await paymentQueryService.Handle(new GetPaymentsReceivedByDriverQuery(driverId));
+        var resources = views.Select(PaymentResourceFromEntityAssembler.ToResourceFromView);
         return Ok(resources);
     }
 
