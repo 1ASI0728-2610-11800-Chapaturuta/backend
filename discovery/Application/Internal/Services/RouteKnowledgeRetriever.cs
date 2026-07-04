@@ -101,8 +101,10 @@ public class RouteKnowledgeRetriever(IRouteRepository routeRepository) : IRouteK
             ? string.Join(", ", listed) + $", … (+{stops.Count - MaxStopsPerRoute})"
             : string.Join(", ", listed);
 
+        // "frecuencia de salida" = lenguaje ubicuo: cada cuánto llega un nuevo vehículo
+        // al paradero para iniciar la ruta.
         var line = $"- Ruta #{route.Id}: {endpoints}. Precio S/ {route.Price:0.00}. " +
-                   $"Duración ~{route.Duration} min, frecuencia ~{route.Frequency} min.";
+                   $"Duración ~{route.Duration} min, frecuencia de salida ~{route.Frequency} min.";
         if (!string.IsNullOrWhiteSpace(stopsText))
             line += $" Paraderos: {stopsText}.";
         return line;

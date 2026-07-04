@@ -26,6 +26,20 @@ public class SubscriptionCommandService(
         var now = DateTime.UtcNow;
         var endsAt = ComputeEndDate(now, plan.BillingCycle);
 
+        // Impide pagar dos veces por Premium: si el usuario ya tiene una suscripción Premium
+        // activa y vigente, no puede contratar otra (debe cancelarla o esperar a que venza).
+        if (plan.PlanType == PlanType.Premium)
+        {
+            var existingActive = await subscriptionRepository.FindActiveByUserIdAsync(command.FkIdUser, now);
+            if (existingActive != null && existingActive.IsActive(now))
+            {
+                var existingPlan = await planRepository.FindByIdAsync(existingActive.FkIdPlan);
+                if (existingPlan?.PlanType == PlanType.Premium)
+                    throw new InvalidOperationException(
+                        "Ya tienes una suscripción Premium activa. Cancélala o espera a que venza antes de contratar otra.");
+            }
+        }
+
         var subscription = new Subscription(command.FkIdUser, command.FkIdPlan, command.AutoRenew);
 
         try

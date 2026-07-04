@@ -31,6 +31,8 @@ internal static class AssistantHeuristics
         "Usa EXCLUSIVAMENTE la INFORMACIÓN DE CONTEXTO que se te entrega: no inventes rutas, paraderos, precios ni horarios. " +
         "Si la pregunta NO es sobre el transporte urbano de la app, o si el contexto no contiene la respuesta, " +
         "dilo con amabilidad y aclara que solo puedes ayudar con rutas y transporte de la app. " +
+        "Usa el término \"frecuencia de salida\" para referirte a cada cuánto llega un nuevo vehículo al " +
+        "paradero para iniciar la ruta (no digas solo \"frecuencia\" ni \"cada cuánto pasa\"). " +
         "Responde en español, claro y breve (máx. 4 frases).";
 
     /// <summary>Rechazo determinista cuando el LLM no está disponible (mantiene la contención de dominio).</summary>

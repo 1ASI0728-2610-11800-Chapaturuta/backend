@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "H:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj": {}
+    "h:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj": {}
   },
   "projects": {
-    "H:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj": {
+    "h:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "H:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj",
+        "projectUniqueName": "h:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj",
         "projectName": "Frock-backend",
-        "projectPath": "H:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj",
+        "projectPath": "h:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\Frock-backend.csproj",
         "packagesPath": "C:\\Users\\51924\\.nuget\\packages\\",
-        "outputPath": "H:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\obj\\",
+        "outputPath": "h:\\8vo ciclo\\UIni\\Emergentes\\Codigo\\backend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\51924\\AppData\\Roaming\\NuGet\\NuGet.Config"
