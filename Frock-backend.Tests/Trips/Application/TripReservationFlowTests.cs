@@ -72,7 +72,7 @@ public class TripReservationFlowTests
         var driverFacade = new Mock<IDriverContextFacade>();
         var tripService = new TripCommandService(tripRepo, userRepo, routeRepo, stopRepo, driverFacade.Object, unitOfWork);
         var reservationService = new ReservationCommandService(
-            reservationRepo, tripRepo, userRepo, payments.Object, unitOfWork,
+            reservationRepo, tripRepo, routeRepo, userRepo, payments.Object, unitOfWork,
             Options.Create(new ReservationHoldOptions { PaymentHoldMinutes = 15 }));
         return (tripService, reservationService, payments);
     }

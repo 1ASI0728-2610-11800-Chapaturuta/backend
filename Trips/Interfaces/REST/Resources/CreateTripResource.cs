@@ -16,5 +16,7 @@ public record CreateTripResource(
     [property: SwaggerSchema("Fare paid for this trip in Peruvian soles (S/.). Defaults to route price if not provided")]
     decimal? Price,
     [property: SwaggerSchema("Initial number of available seats on this trip (vehicle capacity available for reservations)")]
-    int AvailableSeats
+    int AvailableSeats,
+    [property: SwaggerSchema("UTC start time chosen for this trip (ISO 8601). Defaults to the current UTC time if not provided")]
+    DateTime? StartTime = null
 );

@@ -32,7 +32,7 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
         // No blanket try/catch: letting exceptions reach GlobalExceptionHandler preserves the
         // real status code (e.g. a DB save failure -> 500 with the cause logged) instead of
         // masking every failure as a generic 400 that hides the underlying error.
-        var command = new CreateTripCommand(resource.FkIdUser, resource.FkIdDriver, resource.FkIdRoute, resource.FkIdOriginStop, resource.FkIdDestinationStop, resource.Price, resource.AvailableSeats);
+        var command = new CreateTripCommand(resource.FkIdUser, resource.FkIdDriver, resource.FkIdRoute, resource.FkIdOriginStop, resource.FkIdDestinationStop, resource.Price, resource.AvailableSeats, resource.StartTime);
         var trip = await commandService.Handle(command);
         if (trip == null) return BadRequest("Could not create trip");
         var tripResource = TripResourceFromEntityAssembler.ToResourceFromEntity(trip);
@@ -99,7 +99,7 @@ public class TripsController(ITripCommandService commandService, ITripQueryServi
         // capacity (AvailableSeats), which passengers then draw down by reserving.
         var command = new CreateTripCommand(
             resource.FkIdUser, resource.FkIdDriver, resource.FkIdRoute,
-            resource.FkIdOriginStop, resource.FkIdDestinationStop, resource.Price, resource.Seats);
+            resource.FkIdOriginStop, resource.FkIdDestinationStop, resource.Price, resource.Seats, resource.StartTime);
         var trip = await commandService.Handle(command);
         if (trip == null) return BadRequest("Could not publish trip");
         var tripResource = TripResourceFromEntityAssembler.ToResourceFromEntity(trip);

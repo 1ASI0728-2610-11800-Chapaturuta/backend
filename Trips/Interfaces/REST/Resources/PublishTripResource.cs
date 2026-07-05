@@ -8,4 +8,5 @@ public record PublishTripResource(
     int FkIdOriginStop,
     int FkIdDestinationStop,
     decimal? Price,
-    int Seats);
+    int Seats,
+    DateTime? StartTime = null);

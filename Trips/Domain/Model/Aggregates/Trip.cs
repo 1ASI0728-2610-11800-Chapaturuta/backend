@@ -18,14 +18,14 @@ public class Trip
 
     protected Trip() { }
 
-    public Trip(int fkIdUser, int? fkIdDriver, int fkIdRoute, int fkIdOriginStop, int fkIdDestinationStop, decimal? price, int availableSeats = 0)
+    public Trip(int fkIdUser, int? fkIdDriver, int fkIdRoute, int fkIdOriginStop, int fkIdDestinationStop, decimal? price, int availableSeats = 0, DateTime? startTime = null)
     {
         FkIdUser = fkIdUser;
         FkIdDriver = fkIdDriver;
         FkIdRoute = fkIdRoute;
         FkIdOriginStop = fkIdOriginStop;
         FkIdDestinationStop = fkIdDestinationStop;
-        StartTime = DateTime.UtcNow;
+        StartTime = startTime ?? DateTime.UtcNow;
         Price = price;
         Status = TripStatus.Pending;
         AvailableSeats = availableSeats;

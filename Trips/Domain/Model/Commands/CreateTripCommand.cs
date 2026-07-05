@@ -1,3 +1,3 @@
 namespace Frock_backend.Trips.Domain.Model.Commands;
 
-public record CreateTripCommand(int FkIdUser, int? FkIdDriver, int FkIdRoute, int FkIdOriginStop, int FkIdDestinationStop, decimal? Price, int AvailableSeats);
+public record CreateTripCommand(int FkIdUser, int? FkIdDriver, int FkIdRoute, int FkIdOriginStop, int FkIdDestinationStop, decimal? Price, int AvailableSeats, DateTime? StartTimeUtc = null);

@@ -1,5 +1,7 @@
 using Frock_backend.IAM.Domain.Repositories;
 using Frock_backend.Payments.Interfaces.ACL;
+using Frock_backend.routes.Domain.Repository;
+using Frock_backend.routes.Domain.Service;
 using Frock_backend.Trips.Domain.Model.Aggregates;
 using Frock_backend.Trips.Domain.Model.Commands;
 using Frock_backend.Trips.Domain.Model.ValueObjects;
@@ -13,6 +15,7 @@ namespace Frock_backend.Trips.Application.Internal.CommandServices;
 public class ReservationCommandService(
     IReservationRepository reservationRepository,
     ITripRepository tripRepository,
+    IRouteRepository routeRepository,
     IUserRepository userRepository,
     IPaymentsContextFacade paymentsContextFacade,
     IUnitOfWork unitOfWork,
@@ -30,6 +33,14 @@ public class ReservationCommandService(
         var trip = await tripRepository.FindByIdAsync(command.FkIdTrip);
         if (trip == null)
             throw new InvalidOperationException($"Trip with id {command.FkIdTrip} not found");
+
+        // The trip's date/time was fixed when it was created/published; re-validate it against the
+        // route's current attention hours (Schedules) so a reservation can't be made against a trip
+        // that now falls outside them. FindByRouteId eager-loads Schedules (FindByIdAsync doesn't).
+        var route = await routeRepository.FindByRouteId(trip.FkIdRoute);
+        if (route != null && !RouteScheduleRules.IsOpenAt(route, trip.StartTime, out _))
+            throw new InvalidOperationException(
+                "No puedes reservar este viaje: está fuera del horario de atención de la ruta.");
 
         // Free up seats held by unpaid reservations before committing new ones, otherwise abandoned
         // (never-paid) holds would drain availability forever. Two cases are released here:

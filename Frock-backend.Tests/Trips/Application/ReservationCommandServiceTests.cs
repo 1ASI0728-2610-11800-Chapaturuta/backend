@@ -2,6 +2,8 @@ using Frock_backend.IAM.Domain.Model.Aggregates;
 using Frock_backend.IAM.Domain.Repositories;
 using Frock_backend.Payments.Domain.Model.ValueObjects;
 using Frock_backend.Payments.Interfaces.ACL;
+using Frock_backend.routes.Domain.Model.Aggregates;
+using Frock_backend.routes.Domain.Repository;
 using Frock_backend.shared.Domain.Repositories;
 using Frock_backend.Trips.Application.Internal.CommandServices;
 using Frock_backend.Trips.Domain.Model.Aggregates;
@@ -17,6 +19,7 @@ public class ReservationCommandServiceTests
 {
     private readonly Mock<IReservationRepository> _reservationRepo = new(MockBehavior.Strict);
     private readonly Mock<ITripRepository> _tripRepo = new(MockBehavior.Strict);
+    private readonly Mock<IRouteRepository> _routeRepo = new(MockBehavior.Strict);
     private readonly Mock<IUserRepository> _userRepo = new(MockBehavior.Strict);
     private readonly Mock<IPaymentsContextFacade> _paymentsFacade = new(MockBehavior.Strict);
     private readonly Mock<IUnitOfWork> _unitOfWork = new(MockBehavior.Strict);
@@ -25,10 +28,16 @@ public class ReservationCommandServiceTests
     private ReservationCommandService BuildService() => new(
         _reservationRepo.Object,
         _tripRepo.Object,
+        _routeRepo.Object,
         _userRepo.Object,
         _paymentsFacade.Object,
         _unitOfWork.Object,
         Options.Create(new ReservationHoldOptions { PaymentHoldMinutes = HoldMinutes }));
+
+    // NewTrip() always uses fkIdRoute: 3 with no configured Schedules -> RouteScheduleRules.IsOpenAt
+    // treats it as always open, so this route repo setup is a no-op safety pass for that check.
+    private void SetupOpenRoute() =>
+        _routeRepo.Setup(r => r.FindByRouteId(3)).ReturnsAsync(new RouteAggregate(10.0, 30, 30) { Id = 3 });
 
     private static Trip NewTrip(int availableSeats, decimal price = 10.0m) =>
         new(
@@ -64,6 +73,7 @@ public class ReservationCommandServiceTests
         var trip = NewTrip(availableSeats: 1);
         _userRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(new User());
         _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        SetupOpenRoute();
         _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id)).ReturnsAsync(new List<Reservation>());
         var service = BuildService();
         var cmd = new CreateReservationCommand(
@@ -83,6 +93,7 @@ public class ReservationCommandServiceTests
         var trip = NewTrip(availableSeats: 5, price: 10.0m);
         _userRepo.Setup(r => r.FindByIdAsync(42)).ReturnsAsync(new User());
         _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        SetupOpenRoute();
         _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id)).ReturnsAsync(new List<Reservation>());
 
         Reservation? captured = null;
@@ -140,6 +151,7 @@ public class ReservationCommandServiceTests
 
         _userRepo.Setup(r => r.FindByIdAsync(42)).ReturnsAsync(new User());
         _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        SetupOpenRoute();
         _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id))
             .ReturnsAsync(new List<Reservation> { expired });
         _reservationRepo.Setup(r => r.AddAsync(It.IsAny<Reservation>())).Returns(Task.CompletedTask);
@@ -175,6 +187,7 @@ public class ReservationCommandServiceTests
 
         _userRepo.Setup(r => r.FindByIdAsync(42)).ReturnsAsync(new User());
         _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        SetupOpenRoute();
         _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id))
             .ReturnsAsync(new List<Reservation> { previous });
         _reservationRepo.Setup(r => r.AddAsync(It.IsAny<Reservation>())).Returns(Task.CompletedTask);
@@ -210,6 +223,7 @@ public class ReservationCommandServiceTests
 
         _userRepo.Setup(r => r.FindByIdAsync(42)).ReturnsAsync(new User());
         _tripRepo.Setup(r => r.FindByIdAsync(1)).ReturnsAsync(trip);
+        SetupOpenRoute();
         _reservationRepo.Setup(r => r.FindByTripIdAsync(trip.Id))
             .ReturnsAsync(new List<Reservation> { otherActive });
         _reservationRepo.Setup(r => r.AddAsync(It.IsAny<Reservation>())).Returns(Task.CompletedTask);

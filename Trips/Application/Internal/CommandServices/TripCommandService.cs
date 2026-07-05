@@ -1,6 +1,7 @@
 using Frock_backend.Driver.Interfaces.ACL;
 using Frock_backend.IAM.Domain.Repositories;
 using Frock_backend.routes.Domain.Repository;
+using Frock_backend.routes.Domain.Service;
 using Frock_backend.stops.Domain.Repositories;
 using Frock_backend.Trips.Domain.Model.Aggregates;
 using Frock_backend.Trips.Domain.Model.Commands;
@@ -41,7 +42,10 @@ public class TripCommandService(
         if (await userRepository.FindByIdAsync(command.FkIdUser) is null)
             throw new KeyNotFoundException($"User with id {command.FkIdUser} not found");
 
-        if (await routeRepository.FindByIdAsync(command.FkIdRoute) is null)
+        // Loaded via FindByRouteId (not FindByIdAsync) because it eager-loads Schedules, which
+        // RouteScheduleRules.IsOpenAt needs below to validate the route's attention hours.
+        var route = await routeRepository.FindByRouteId(command.FkIdRoute);
+        if (route is null)
             throw new KeyNotFoundException($"Route with id {command.FkIdRoute} not found");
 
         if (await stopRepository.FindByIdAsync(command.FkIdOriginStop) is null)
@@ -61,7 +65,13 @@ public class TripCommandService(
             if (capacity is > 0) availableSeats = capacity.Value;
         }
 
-        var trip = new Trip(command.FkIdUser, command.FkIdDriver, command.FkIdRoute, command.FkIdOriginStop, command.FkIdDestinationStop, command.Price, availableSeats);
+        // The chosen start time (or "now" if none was given) must fall within the route's
+        // configured attention hours (Schedules), evaluated in Lima local time.
+        var effectiveStart = command.StartTimeUtc ?? DateTime.UtcNow;
+        if (!RouteScheduleRules.IsOpenAt(route, effectiveStart, out var reason))
+            throw new InvalidOperationException(reason);
+
+        var trip = new Trip(command.FkIdUser, command.FkIdDriver, command.FkIdRoute, command.FkIdOriginStop, command.FkIdDestinationStop, command.Price, availableSeats, startTime: effectiveStart);
 
         // Don't re-wrap persistence failures in a bare Exception: that discarded the
         // DbUpdateException (and its InnerException with the real SQL error) and made the
